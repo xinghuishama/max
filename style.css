@@ -705,3 +705,78 @@ body {
   z-index: 0;
   pointer-events: none;
 }
+/* ===========================
+   神码再现 v3.6 · 必要升级 CSS
+   =========================== */
+
+/* 全局字体与背景 */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  background: #050816;
+  color: #e5e7eb;
+}
+
+/* 输入框 */
+textarea {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e5e7eb;
+  border-radius: 6px;
+  outline: none;
+}
+
+textarea:focus {
+  border-color: #00ffea;
+}
+
+/* 按钮基础样式 */
+button {
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+button:hover {
+  opacity: 0.85;
+}
+
+/* 结果区数字格子 */
+#result .grid > div {
+  transition: 0.15s;
+  border-radius: 6px;
+}
+
+#result .grid > div:hover {
+  transform: scale(1.05);
+}
+
+/* Toast 提示 */
+#toast {
+  pointer-events: none;
+  backdrop-filter: blur(6px);
+}
+
+/* 抽屉 */
+#drawer-overlay {
+  backdrop-filter: blur(2px);
+}
+
+#drawer-container {
+  transition: transform 0.25s ease;
+}
+
+/* 滚动条美化 */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
