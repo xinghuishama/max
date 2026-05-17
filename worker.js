@@ -151,7 +151,7 @@
       for (let i = 0; i < cachedFuncs.length; i++) {
         if (cachedFuncs[i](n)) {
           hit++;
-          if (hit > 3) break;
+          if (hit > 6) break;
         }
       }
       hits[n] = hit;
