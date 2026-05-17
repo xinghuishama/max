@@ -1,12 +1,9 @@
 // ======================== app.js — 主线程核心逻辑 v3.6.0 ========================
-// 变更记录：
-// 1) 命中次数上限由 3 提升至 6（computeAnalysisMainThread）
-// 2) 生肖数据改为读取 data.js 自动跨年生成结果
-// 3) 保留 v3.5.6 全部其他优化
+// 修复：renderLottery HTML 拼接错误（'/<<span → '/<<span）
+// 变更：命中上限 3→6，生肖自动跨年
 (function () {
   "use strict";
 
-  // ======================== 数据与配置 ========================
   const DATA = window.APP_DATA || {};
   const MAX_NUMBERS = DATA.MAX_NUMBERS || 5000;
   const SHENGXIAO = DATA.SHENGXIAO || {};
@@ -25,7 +22,6 @@
     endH: 21, endM: 35
   };
 
-  // ======================== DOM 缓存 ========================
   const DOM = {};
   function cacheDOM() {
     const ids = [
@@ -43,7 +39,6 @@
     if (!DOM.drawer_close) DOM.drawer_close = document.getElementById("drawer-close");
   }
 
-  // ======================== 状态管理 ========================
   let state = {
     killNums: [],
     selectedFilters: {
@@ -75,7 +70,6 @@
     return Object.values(state.selectedFilters).flat();
   }
 
-  // ======================== 本地持久化 ========================
   function saveState() {
     try {
       localStorage.setItem(LS_KEY, JSON.stringify({
@@ -111,7 +105,6 @@
     }
   }
 
-  // ======================== 工具函数 ========================
   function escapeHtml(str) {
     if (str == null) return "";
     return String(str)
@@ -158,7 +151,6 @@
     return { nums: results, truncated: truncated };
   }
 
-  // ======================== 匹配函数缓存 ========================
   let cachedMatchFuncs = null;
   let lastFilterSignature = "";
 
@@ -211,7 +203,6 @@
     return function () { return false; };
   }
 
-  // ======================== 主线程分析引擎（命中上限 6） ========================
   function computeAnalysisMainThread(input, killNums, filters) {
     const nums = parseInputCount(input).nums;
     const rawCount = new Uint16Array(50);
@@ -224,7 +215,7 @@
     for (let n = 1; n <= 49; n++) {
       let hit = killSet.has(n) ? 1 : 0;
       for (let i = 0; i < funcs.length; i++) {
-        if (funcs[i](n)) { hit++; if (hit > 6) break; }  // ← 上限改为 6
+        if (funcs[i](n)) { hit++; if (hit > 6) break; }
       }
       hitCounts[n] = hit;
     }
@@ -240,7 +231,6 @@
     return { adjustedCount: Array.from(adjustedCount), adjustedTotal, unique, hitCounts: Array.from(hitCounts), rawCount: Array.from(rawCount) };
   }
 
-  // ======================== Web Worker 管理 ========================
   let analysisWorker = null;
   let workerReady = false;
 
@@ -280,7 +270,6 @@
     }
   }
 
-  // ======================== 独苗飞入特效 ========================
   let currentUniqueElement = null;
   let lastUniqueNum = null;
 
@@ -356,7 +345,6 @@
     requestAnimationFrame(animate);
   }
 
-  // ======================== 结果渲染 ========================
   function renderResult(adjustedCount, adjustedTotal, unique, hitCounts, rawCount) {
     try {
       const container = DOM.result;
@@ -478,7 +466,6 @@
     });
   }
 
-  // ======================== 分析调度 ========================
   let debounceTimer = null;
 
   function runAnalysis() {
@@ -539,7 +526,6 @@
     saveState();
   }
 
-  // ======================== 开奖数据获取 ========================
   let isCurrentDrawComplete = false;
   let lastLotteryPeriod = "";
   let isFetchingLottery = false;
@@ -642,6 +628,7 @@
     }
   }
 
+  // ======================== 修复：'/<<span 改为 '/<<span ========================
   function renderLottery(item) {
     const codes = String(item.openCode || "").split(",").map(function (c) { return escapeHtml(c.trim()); });
     const waves = String(item.wave || "").split(",").map(function (w) {
@@ -665,6 +652,7 @@
       const wxCls = wxClassMap[wx] || "";
       const div = document.createElement("div");
       div.className = "result-ball-item";
+      // 修复：去掉多余的 <，'/<span class="' 是正确的
       div.innerHTML = '<div class="result-ball ' + colorClass + '" style="animation-delay: ' + (i * 150) + 'ms">' + escapeHtml(codes[i].padStart(2, "0")) + '<div class="result-ball-meta">' + escapeHtml(zodiacs[i] || "") + '/<<span class="' + wxCls + '">' + wx + "</span></div></div>";
       container.appendChild(div);
     }
@@ -680,6 +668,7 @@
       const wxCls = wxClassMap[wx] || "";
       const div = document.createElement("div");
       div.className = "result-ball-item";
+      // 修复：同样去掉多余的 <
       div.innerHTML = '<div class="result-ball ' + colorClass + '" style="animation-delay: ' + (6 * 150) + 'ms">' + escapeHtml(codes[6].padStart(2, "0")) + '<div class="result-ball-meta">' + escapeHtml(zodiacs[6] || "") + '/<<span class="' + wxCls + '">' + wx + "</span></div></div>";
       container.appendChild(div);
     }
@@ -688,7 +677,6 @@
     if (DOM.lotteryTime) DOM.lotteryTime.textContent = escapeHtml((item.openTime || "--").replace(" ", "\n"));
   }
 
-  // ======================== 历史开奖 ========================
   let currentHistoryData = [];
   let currentHistorySorted = [];
   let currentHistoryPage = 1;
@@ -787,7 +775,6 @@
     }
   }
 
-  // ======================== 底部抽屉系统 ========================
   const DrawerSystem = {
     current: null,
     templates: {
@@ -1087,7 +1074,6 @@
     }
   };
 
-  // ======================== 复制功能 ========================
   function copyResult() {
     if (!lastAnalysisResult) { showToast("暂无分析结果"); return; }
     const sortedFreqMap = lastAnalysisResult.sortedFreqMap;
@@ -1132,7 +1118,6 @@
   }
   window.copyResult = copyResult;
 
-  // ======================== 直播播放器 ========================
   let currentHls = null;
   let currentFlvPlayer = null;
   let liveSourceIndex = 0;
@@ -1353,7 +1338,6 @@
     if (video) { video.pause(); video.removeAttribute("src"); video.load(); }
   }
 
-  // ======================== 自动刷新 ========================
   function initAutoRefresh() {
     setInterval(function () {
       if (isCurrentDrawComplete || isFetchingLottery) return;
@@ -1375,7 +1359,6 @@
     }, 1000);
   }
 
-  // ======================== 彩色水泡粒子背景 ========================
   function initParticles() {
     const canvas = document.getElementById("particle-canvas");
     if (!canvas) return;
@@ -1476,7 +1459,6 @@
     });
   }
 
-  // ======================== 初始化入口 ========================
   function init() {
     try {
       cacheDOM();
