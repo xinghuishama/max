@@ -465,6 +465,19 @@
       if (DOM.result) DOM.result.innerHTML = '<div class="text-center py-8 text-red-400">渲染出错，请检查控制台</div>';
     }
   }
+// ======================== 内嵌五行兜底表（防 data.js 异常） ========================
+const FIVE_MAP = {
+  1:"水",2:"火",3:"火",4:"金",5:"金",6:"土",7:"土",8:"木",9:"木",10:"火",
+  11:"火",12:"金",13:"金",14:"水",15:"水",16:"木",17:"木",18:"火",19:"火",
+  20:"土",21:"土",22:"水",23:"水",24:"木",25:"木",26:"金",27:"金",28:"土",
+  29:"土",30:"水",31:"水",32:"火",33:"火",34:"金",35:"金",36:"土",37:"土",
+  38:"木",39:"木",40:"火",41:"火",42:"金",43:"金",44:"水",45:"水",46:"木",
+  47:"木",48:"火",49:"火"
+};
+function getFive(num) {
+  if (numProps && numProps[num] && numProps[num].five) return numProps[num].five;
+  return FIVE_MAP[num] || "?";
+}
 
   function initResultDelegation() {
     const resultEl = DOM.result;
@@ -659,7 +672,7 @@
     for (let i = 0; i < 6 && i < codes.length; i++) {
       const num = parseInt(codes[i], 10);
       const colorClass = waves[i] === "red" ? "result-ball-red" : (waves[i] === "green" ? "result-ball-green" : "result-ball-blue");
-      const wx = (num >= 1 && num <= 49) ? (numProps[num] && numProps[num].five || "?") : "?";
+      const wx = (num >= 1 && num <= 49) ? getFive(num) : "?";
       const wxCls = wxClassMap[wx] || "";
       const div = document.createElement("div");
       div.className = "result-ball-item";
@@ -675,7 +688,7 @@
 
       const num = parseInt(codes[6], 10);
       const colorClass = waves[6] === "red" ? "result-ball-red" : (waves[6] === "green" ? "result-ball-green" : "result-ball-blue");
-      const wx = (num >= 1 && num <= 49) ? (numProps[num] && numProps[num].five || "?") : "?";
+      const wx = (num >= 1 && num <= 49) ? getFive(num) : "?";
       const wxCls = wxClassMap[wx] || "";
       const div = document.createElement("div");
       div.className = "result-ball-item";
