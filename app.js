@@ -714,7 +714,7 @@ function getFive(num) {
       const zodiac = zodiacs[i];
       const cc = wave === "blue" || wave === "蓝" ? "history-ball-blue" : wave === "green" || wave === "绿" ? "history-ball-green" : "history-ball-red";
       const num = parseInt(code, 10);
-      const five = (num >= 1 && num <= 49) ? (numProps[num] && numProps[num].five || "") : "";
+      const five = (num >= 1 && num <= 49) ? getFive(num) : "";
       html += '<div class="history-ball-card ' + cc + '"><div class="history-ball-number">' + escapeHtml(code) + '</div><div class="history-ball-tag">' + escapeHtml(zodiac || "") + "/" + escapeHtml(five) + "</div></div>";
       if (i === 5) html += '<span class="history-plus-sign">+</span>';
     });
