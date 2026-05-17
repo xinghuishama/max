@@ -1,11 +1,11 @@
 // ======================== worker.js — 独立 Worker 分析引擎 v3.6.0 ========================
-// 变更：1) 命中上限 3→6  2) 内置自动跨年生肖算法
+// 新增：内置自动跨年生肖算法，确保 Worker 离线时数据一致
 (function () {
   "use strict";
 
   const MAX_NUMBERS = 5000;
 
-  // ======================== 自动跨年生肖算法 ========================
+  // ======================== 自动跨年生肖算法（Worker 内置 Fallback） ========================
   const ZODIAC_SEQUENCE = ["龙", "蛇", "马", "羊", "猴", "鸡", "狗", "猪", "鼠", "牛", "虎", "兔"];
   const BASE_YEAR = 2024;
 
@@ -25,9 +25,10 @@
     return map;
   }
 
-  const CURRENT_YEAR = 2024;
+  const CURRENT_YEAR = 2024; // Worker 无法访问 new Date()，使用基准年或主线程传递
   let SHENGXIAO = generateShengxiaoMap(CURRENT_YEAR);
 
+  // 五行与波色（固定）
   const CATEGORIES = {
     金: [4, 5, 12, 13, 26, 27, 34, 35, 42, 43],
     木: [8, 9, 16, 17, 24, 25, 38, 39, 46, 47],
@@ -45,6 +46,7 @@
     "7段": [43, 44, 45, 46, 47, 48, 49]
   };
 
+  // 内置 numProps 生成器
   let numProps = new Array(50);
   function buildNumProps() {
     const sxEntries = Object.entries(SHENGXIAO);
@@ -134,7 +136,6 @@
   let cachedFuncs = null;
   let lastFiltersSignature = "";
 
-  // ======================== 命中计算（上限 6） ========================
   function computeHitCounts(killNums, filters) {
     const hits = new Uint8Array(50);
     const killSet = new Set(killNums);
@@ -150,7 +151,7 @@
       for (let i = 0; i < cachedFuncs.length; i++) {
         if (cachedFuncs[i](n)) {
           hit++;
-          if (hit > 6) break;  // ← 上限改为 6
+          if (hit > 3) break;
         }
       }
       hits[n] = hit;
@@ -158,15 +159,19 @@
     return hits;
   }
 
+  // Worker 消息入口
   self.onmessage = function (e) {
     try {
+      // 主线程传递年份时，重新生成生肖映射
       if (e.data.year && typeof e.data.year === "number") {
         SHENGXIAO = generateShengxiaoMap(e.data.year);
-        buildNumProps();
-      } else if (e.data.numProps && Array.isArray(e.data.numProps) && e.data.numProps.length >= 50) {
+        buildNumProps(); // 重新构建 numProps
+      }
+      // 优先使用主线程传递的 numProps
+      else if (e.data.numProps && Array.isArray(e.data.numProps) && e.data.numProps.length >= 50) {
         numProps = e.data.numProps;
       } else {
-        buildNumProps();
+        buildNumProps(); // 使用内置 fallback
       }
 
       const input = e.data.input || "";
