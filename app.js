@@ -1,6 +1,6 @@
-// ======================== app.js — 主线程核心逻辑 v3.6.0 ========================
-// 修复：renderLottery HTML 拼接错误（'/<<span → '/<<span）
-// 变更：命中上限 3→6，生肖自动跨年
+
+// ======================== app.js — 主线程核心逻辑 v3.6.1 ========================
+// 修复：1) renderLottery '/<<span' → '/<<span'  2) 内嵌波色兜底表，防数据丢失
 (function () {
   "use strict";
 
@@ -8,6 +8,16 @@
   const MAX_NUMBERS = DATA.MAX_NUMBERS || 5000;
   const SHENGXIAO = DATA.SHENGXIAO || {};
   const numProps = DATA.numProps || [];
+
+  // ======================== 内嵌波色兜底表（防 data.js 异常） ========================
+  const RED_SET = new Set([1,2,7,8,12,13,18,19,23,24,29,30,34,35,40,45,46]);
+  const BLUE_SET = new Set([3,4,9,10,14,15,20,25,26,31,36,37,41,42,47,48]);
+  function getBallColor(n) {
+    if (numProps && numProps[n] && numProps[n].color) return numProps[n].color;
+    if (RED_SET.has(n)) return "red";
+    if (BLUE_SET.has(n)) return "blue";
+    return "green";
+  }
 
   const API_CONFIG = {
     live: "https://macaumarksix.com/api/live2",
@@ -166,39 +176,39 @@
   function buildMatchFunc(cond) {
     if (cond.startsWith("生肖")) {
       const sx = cond.slice(2);
-      return function (n) { return numProps[n].shengXiao === sx; };
+      return function (n) { return numProps[n] && numProps[n].shengXiao === sx; };
     }
     if (cond.endsWith("头单") || cond.endsWith("头双")) {
       const parts = cond.split("头");
       const headVal = parseInt(parts[0], 10);
       const oe = parts[1];
-      return function (n) { return numProps[n].head === headVal && numProps[n].odd === oe; };
+      return function (n) { return numProps[n] && numProps[n].head === headVal && numProps[n].odd === oe; };
     }
     if (cond.endsWith("尾")) {
       const tailVal = parseInt(cond[0], 10);
-      return function (n) { return numProps[n].tail === tailVal; };
+      return function (n) { return numProps[n] && numProps[n].tail === tailVal; };
     }
     if (cond.endsWith("段")) {
-      return function (n) { return numProps[n].duan === cond; };
+      return function (n) { return numProps[n] && numProps[n].duan === cond; };
     }
     if (cond.endsWith("波单") || cond.endsWith("波双")) {
       const parts = cond.split("波");
       const c = parts[0];
       const oe = parts[1];
       const colorMap = { 红: "red", 蓝: "blue", 绿: "green" };
-      return function (n) { return numProps[n].color === colorMap[c] && numProps[n].odd === oe; };
+      return function (n) { return numProps[n] && numProps[n].color === colorMap[c] && numProps[n].odd === oe; };
     }
     if (["金", "木", "水", "火", "土"].includes(cond)) {
-      return function (n) { return numProps[n].five === cond; };
+      return function (n) { return numProps[n] && numProps[n].five === cond; };
     }
     if (["合数单", "合数双", "大单", "大双", "小单", "小双"].includes(cond)) {
-      if (cond === "合数单") return function (n) { return numProps[n].sumOdd === "合数单"; };
-      if (cond === "合数双") return function (n) { return numProps[n].sumOdd === "合数双"; };
-      return function (n) { return numProps[n].halfOddEven === cond; };
+      if (cond === "合数单") return function (n) { return numProps[n] && numProps[n].sumOdd === "合数单"; };
+      if (cond === "合数双") return function (n) { return numProps[n] && numProps[n].sumOdd === "合数双"; };
+      return function (n) { return numProps[n] && numProps[n].halfOddEven === cond; };
     }
     if (cond.endsWith("合")) {
       const sumVal = parseInt(cond, 10);
-      return function (n) { return numProps[n].sum === sumVal; };
+      return function (n) { return numProps[n] && numProps[n].sum === sumVal; };
     }
     return function () { return false; };
   }
@@ -345,6 +355,7 @@
     requestAnimationFrame(animate);
   }
 
+  // ======================== 结果渲染（使用 getBallColor 兜底） ========================
   function renderResult(adjustedCount, adjustedTotal, unique, hitCounts, rawCount) {
     try {
       const container = DOM.result;
@@ -392,8 +403,8 @@
           const n = nums[ni];
           const hit = hitCounts[n] || 0;
           const isGray = (hit > 0);
-          const p = numProps[n];
-          let baseColorClass = isGray ? "ball-gray" : (p && p.color === "red" ? "ball-red" : (p && p.color === "green" ? "ball-green" : "ball-blue"));
+          const color = getBallColor(n); // ← 使用兜底函数
+          let baseColorClass = isGray ? "ball-gray" : (color === "red" ? "ball-red" : (color === "green" ? "ball-green" : "ball-blue"));
           const isTarget = (n === uniqueUnhitNum);
           const flashClass = isTarget ? "flash-unique" : "";
           let markHtml = "";
@@ -425,8 +436,8 @@
         zeroCountNumbers.sort(function (a, b) { return a - b; });
         for (let i = 0; i < zeroCountNumbers.length; i++) {
           const n = zeroCountNumbers[i];
-          const p = numProps[n];
-          const colorClass = p && p.color === "red" ? "ball-red" : (p && p.color === "green" ? "ball-green" : "ball-blue");
+          const color = getBallColor(n); // ← 兜底
+          const colorClass = color === "red" ? "ball-red" : (color === "green" ? "ball-green" : "ball-blue");
           htmlParts.push('<button class="ball-3d ' + colorClass + '" data-num="' + n + '">' + String(n).padStart(2, "0") + "</button>");
         }
         htmlParts.push("</div></div>");
@@ -440,8 +451,8 @@
         currentUniqueElement = DOM.result.querySelector('[data-num="' + uniqueUnhitNum + '"]');
         if (lastUniqueNum !== uniqueUnhitNum) {
           lastUniqueNum = uniqueUnhitNum;
-          const p = numProps[uniqueUnhitNum];
-          const flyColor = p && p.color === "red" ? "ball-red" : (p && p.color === "green" ? "ball-green" : "ball-blue");
+          const color = getBallColor(uniqueUnhitNum);
+          const flyColor = color === "red" ? "ball-red" : (color === "green" ? "ball-green" : "ball-blue");
           setTimeout(function () { launchUniqueFlyEffect(uniqueUnhitNum, flyColor); }, 100);
         }
       } else {
@@ -628,7 +639,7 @@
     }
   }
 
-  // ======================== 修复：'/<<span 改为 '/<<span ========================
+  // ======================== 真正修复：'/<span class="' ========================
   function renderLottery(item) {
     const codes = String(item.openCode || "").split(",").map(function (c) { return escapeHtml(c.trim()); });
     const waves = String(item.wave || "").split(",").map(function (w) {
@@ -652,7 +663,7 @@
       const wxCls = wxClassMap[wx] || "";
       const div = document.createElement("div");
       div.className = "result-ball-item";
-      // 修复：去掉多余的 <，'/<span class="' 是正确的
+      // 真正修复：'/<span class="' （只有一个 <）
       div.innerHTML = '<div class="result-ball ' + colorClass + '" style="animation-delay: ' + (i * 150) + 'ms">' + escapeHtml(codes[i].padStart(2, "0")) + '<div class="result-ball-meta">' + escapeHtml(zodiacs[i] || "") + '/<<span class="' + wxCls + '">' + wx + "</span></div></div>";
       container.appendChild(div);
     }
@@ -668,7 +679,7 @@
       const wxCls = wxClassMap[wx] || "";
       const div = document.createElement("div");
       div.className = "result-ball-item";
-      // 修复：同样去掉多余的 <
+      // 真正修复
       div.innerHTML = '<div class="result-ball ' + colorClass + '" style="animation-delay: ' + (6 * 150) + 'ms">' + escapeHtml(codes[6].padStart(2, "0")) + '<div class="result-ball-meta">' + escapeHtml(zodiacs[6] || "") + '/<<span class="' + wxCls + '">' + wx + "</span></div></div>";
       container.appendChild(div);
     }
