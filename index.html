@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>神码再现 v4.0 · 霓虹粉 UI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body class="bg-main">
+<canvas id="particles"></canvas>
+  <!-- 顶部导航 -->
+  <header class="navbar">
+    <div class="nav-left">
+      <div class="nav-dot"></div>
+      <span class="nav-title">神码再现 v4.0 · 霓虹粉 UI</span>
+    </div>
+    <div class="nav-right">自动生肖 · Worker 加速 · 全本地计算</div>
+  </header>
+
+  <!-- 主体内容 -->
+  <main class="container">
+
+    <!-- 输入区 -->
+    <section class="glass-box mb-6">
+      <div class="label">输入号码 / 生肖</div>
+
+      <textarea
+        id="numbers"
+        class="input-area"
+        placeholder="例如：12 25 36 龙蛇马 8 17 29 41"
+      ></textarea>
+
+      <div class="btn-row">
+        <button id="exampleBtn" class="btn">示例</button>
+        <button id="clearBtn" class="btn">清空</button>
+        <button id="copyResultBtn" class="btn-primary">复制结果</button>
+      </div>
+
+      <div class="info-row">
+        <span>展开次数：<span id="charCount">0</span></span>
+        <span id="numberWarn" class="warn hidden">已截断至 5000 组</span>
+      </div>
+    </section>
+
+    <!-- 结果区 -->
+    <section class="glass-box">
+      <div class="label">频次结果（1–49）</div>
+      <div id="result" class="grid-box">
+        <div class="empty">暂无数据</div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Toast -->
+  <div id="toast" class="toast">提示</div>
+
+  <!-- 脚本 -->
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+
+</body>
+</html>

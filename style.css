@@ -1,0 +1,225 @@
+/* ===========================
+   神码再现 v4.0 · 霓虹粉主题
+   =========================== */
+
+/* 背景：柔光渐变 + 深色科技感 */
+.bg-main {
+  background: radial-gradient(circle at 20% 20%, #1a0f1f, #05010a 60%);
+  min-height: 100vh;
+  color: #fce7f1;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+}
+
+/* ===========================
+   顶部导航
+   =========================== */
+.navbar {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.nav-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-dot {
+  width: 8px;
+  height: 8px;
+  background: #ff4b81;
+  border-radius: 50%;
+  animation: pulse 1.4s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.4; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.2); }
+  100% { opacity: 0.4; transform: scale(0.9); }
+}
+
+.nav-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffb3c9;
+}
+
+.nav-right {
+  font-size: 11px;
+  color: #ffffff80;
+}
+
+/* ===========================
+   主容器
+   =========================== */
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px 16px;
+}
+
+/* ===========================
+   玻璃拟态卡片
+   =========================== */
+.glass-box {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(14px);
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 0 25px rgba(255, 75, 129, 0.08);
+}
+
+/* 标签文字 */
+.label {
+  font-size: 12px;
+  color: #ffffff80;
+  margin-bottom: 8px;
+}
+
+/* ===========================
+   输入框
+   =========================== */
+.input-area {
+  width: 100%;
+  height: 120px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 10px;
+  color: #ffd9e6;
+  resize: none;
+  outline: none;
+  transition: 0.25s;
+}
+
+.input-area:focus {
+  border-color: #ff4b81;
+  box-shadow: 0 0 10px rgba(255, 75, 129, 0.4);
+}
+
+/* ===========================
+   按钮
+   =========================== */
+.btn-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fce7f1;
+  font-size: 12px;
+  transition: 0.25s;
+}
+
+.btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.btn-primary {
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: rgba(255, 75, 129, 0.15);
+  border: 1px solid rgba(255, 75, 129, 0.4);
+  color: #ff4b81;
+  font-size: 12px;
+  transition: 0.25s;
+}
+
+.btn-primary:hover {
+  background: rgba(255, 75, 129, 0.25);
+  box-shadow: 0 0 12px rgba(255, 75, 129, 0.4);
+}
+
+/* ===========================
+   信息行
+   =========================== */
+.info-row {
+  margin-top: 10px;
+  font-size: 12px;
+  display: flex;
+  justify-content: space-between;
+  color: #ffffff80;
+}
+
+.warn {
+  color: #ff4b81;
+}
+
+/* ===========================
+   数字格子（v4.0 霓虹粉）
+   =========================== */
+.grid-box {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.num-box {
+  padding: 10px 0;
+  border-radius: 10px;
+  background: rgba(255, 75, 129, 0.08);
+  border: 1px solid rgba(255, 75, 129, 0.25);
+  color: #ffb3c9;
+  text-align: center;
+  transition: 0.25s;
+}
+
+.num-box:hover {
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 0 0 15px rgba(255, 75, 129, 0.45);
+}
+
+/* 空状态 */
+.empty {
+  text-align: center;
+  padding: 40px 0;
+  color: #ffffff50;
+}
+
+/* ===========================
+   Toast
+   =========================== */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 30px;
+  transform: translateX(-50%) translateY(40px);
+  background: rgba(0, 0, 0, 0.65);
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #ffd9e6;
+  font-size: 12px;
+  opacity: 0;
+  transition: 0.35s;
+  pointer-events: none;
+
+
+/* ===========================
+   v4.0 粒子特效（霓虹粉）
+   =========================== */
+#particles {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: none;
+  background: transparent;
+  mix-blend-mode: screen;
+}
+
