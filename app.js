@@ -1,4 +1,4 @@
-// ======================== app.js v3.6.2 ========================
+// ======================== app.js v3.6.3 ========================
 (function () {
   "use strict";
 
@@ -7,7 +7,6 @@
   const SHENGXIAO = DATA.SHENGXIAO || {};
   const numProps = DATA.numProps || [];
 
-  // 内嵌兜底表
   const RED_SET = new Set([1,2,7,8,12,13,18,19,23,24,29,30,34,35,40,45,46]);
   const BLUE_SET = new Set([3,4,9,10,14,15,20,25,26,31,36,37,41,42,47,48]);
   const FIVE_MAP = {
@@ -669,13 +668,50 @@
         }).join("") + "</div>";
       },
       live: function () {
-        return '<div class="dflex-col" style="height: calc(90vh - 68px); min-height: 480px;"><div class="dflex-between dmb-2 dpx-1"><span class="dtext-xs dtext-gray">直连视频流播放 · 自动切换备选源</span><a href="https://macaujc.com/open_video2/" target="_blank" rel="noopener noreferrer" style="font-size:12px; background:rgba(0,255,234,0.2); color:#00ffea; padding:6px 12px; border-radius:8px; border:1px solid rgba(0,255,234,0.4); text-decoration:none; display:inline-flex; align-items:center; gap:4px;"><svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>新窗口观看</a></div><div class="dflex-wrap dmb-3" id="live-source-btns"><button data-src-idx="0" class="dlive-btn active">源1·API获取</button><button data-src-idx="1" class="dlive-btn">源2·HLS</button><button data-src-idx="2" class="dlive-btn">源3·FLV</button></div><div class="dvideo-box"><video id="live-video" style="width:100%; height:100%; background:#000;" controls autoplay playsinline muted></video><div id="live-loading" class="doverlay"><svg width="32" height="32" class="animate-spin" style="color:#00ffea; margin-bottom:12px;" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg><span class="dtext-sm dtext-gray" id="live-status">正在获取直播源...</span></div><div id="live-error" class="dhidden doverlay" style="background:#0a0a12; z-index:20; padding:24px; text-align:center;"><svg width="48" height="48" style="color:#f87171; margin-bottom:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg><p style="color:#f87171; font-weight:bold; margin-bottom:4px;">直播源加载失败</p><p class="dtext-xs dtext-gray" style="margin-bottom:16px;">所有备选源均无法连接</p><a href="https://macaujc.com/open_video2/" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; gap:8px; background:linear-gradient(135deg,#00ffea,#0088ff); color:#000; font-weight:bold; padding:10px 24px; border-radius:12px; text-decoration:none; margin-bottom:8px;"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>macaujc.com 直播</a><a href="https://momarksix.org/video" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; gap:8px; background:#1a1a2a; color:#00ffea; font-weight:bold; padding:10px 24px; border-radius:12px; border:1px solid rgba(0,255,234,0.3); text-decoration:none;"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>备用直播站</a></div></div></div>';
+        return '<div class="dflex-col" style="height: calc(90vh - 68px); min-height: 480px;">' +
+          '<div class="dflex-between dmb-2 dpx-1"><span class="dtext-xs dtext-gray">直连视频流播放 · 自动切换备选源</span>' +
+          '<a href="https://macaujc.com/open_video2/" target="_blank" rel="noopener noreferrer" style="font-size:12px; background:rgba(0,255,234,0.2); color:#00ffea; padding:6px 12px; border-radius:8px; border:1px solid rgba(0,255,234,0.4); text-decoration:none; display:inline-flex; align-items:center; gap:4px;">' +
+          '<svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>新窗口观看</a></div>' +
+          '<div class="dflex-wrap dmb-3" id="live-source-btns">' +
+          '<button data-src-idx="0" class="dlive-btn active">源1·API获取</button>' +
+          '<button data-src-idx="1" class="dlive-btn">源2·HLS</button>' +
+          '<button data-src-idx="2" class="dlive-btn">源3·FLV</button>' +
+          "</div>" +
+          '<div class="dvideo-box">' +
+          '<video id="live-video" style="width:100%; height:100%; background:#000;" controls autoplay playsinline muted></video>' +
+          '<div id="live-loading" class="doverlay">' +
+          '<svg width="32" height="32" class="animate-spin" style="color:#00ffea; margin-bottom:12px;" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>' +
+          '<span class="dtext-sm dtext-gray" id="live-status">正在获取直播源...</span></div>' +
+          '<div id="live-error" class="dhidden doverlay" style="background:#0a0a12; z-index:20; padding:24px; text-align:center;">' +
+          '<svg width="48" height="48" style="color:#f87171; margin-bottom:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>' +
+          '<p style="color:#f87171; font-weight:bold; margin-bottom:4px;">直播源加载失败</p>' +
+          '<p class="dtext-xs dtext-gray" style="margin-bottom:16px;">所有备选源均无法连接</p>' +
+          '<a href="https://macaujc.com/open_video2/" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; gap:8px; background:linear-gradient(135deg,#00ffea,#0088ff); color:#000; font-weight:bold; padding:10px 24px; border-radius:12px; text-decoration:none; margin-bottom:8px;">' +
+          '<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>macaujc.com 直播</a>' +
+          '<a href="https://momarksix.org/video" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; gap:8px; background:#1a1a2a; color:#00ffea; font-weight:bold; padding:10px 24px; border-radius:12px; border:1px solid rgba(0,255,234,0.3); text-decoration:none;">' +
+          '<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>备用直播站</a></div></div></div>';
       },
       history: function () {
         let opts = "";
         const currentYear = new Date().getFullYear();
         for (let y = currentYear; y >= 2020; y--) opts += '<option value="' + y + '">' + y + "年</option>";
-        return '<div><select id="historyYear" class="dselect"><option value="">选择年份</option>' + opts + "</select><div id="historyLoading" class="dhidden dtext-center dpy-4"><svg class="animate-spin" style="width:24px; height:24px; margin:0 auto; color:#00ffea;" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div><div id="historyContent" class="dmt-3 hide-scrollbar"></div><div id="historyPagination" class="dflex-between dmt-6 dpx-1 dhidden"><button id="history-prev" class="dpage-btn">← 上1页</button><div class="dtext-sm" style="text-align:center;">第 <span id="historyPageNum" style="font-weight:bold; color:#00ffea;">1</span> 页 / <span id="historyTotalPages" class="dtext-gray">1</span> 页</div><button id="history-next" class="dpage-btn">下1页 →</button></div></div>";
+        return [
+          '<div>',
+            '<select id="historyYear" class="dselect"><option value="">选择年份</option>' + opts + "</select>",
+            '<div id="historyLoading" class="dhidden dtext-center dpy-4">',
+              '<svg class="animate-spin" style="width:24px; height:24px; margin:0 auto; color:#00ffea;" fill="none" viewBox="0 0 24 24">',
+                '<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>',
+                '<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>',
+              "</svg>",
+            "</div>",
+            '<div id="historyContent" class="dmt-3 hide-scrollbar"></div>',
+            '<div id="historyPagination" class="dflex-between dmt-6 dpx-1 dhidden">',
+              '<button id="history-prev" class="dpage-btn">← 上1页</button>',
+              '<div class="dtext-sm" style="text-align:center;">第 <span id="historyPageNum" style="font-weight:bold; color:#00ffea;">1</span> 页 / <span id="historyTotalPages" class="dtext-gray">1</span> 页</div>',
+              '<button id="history-next" class="dpage-btn">下1页 →</button>',
+            "</div>",
+          "</div>"
+        ].join("");
       }
     },
     open: function (type) {
@@ -962,7 +998,7 @@
       if (DOM.drawer_overlay) DOM.drawer_overlay.addEventListener("click", function () { DrawerSystem.close(); });
       fetchLottery(); runAnalysis(); initAutoRefresh(); initParticles();
       window.addEventListener("beforeunload", function () { terminateWorker(); });
-      console.log("%c✅ 神码再现 v3.6.2 永不过期版已加载", "color:#00ffea;font-weight:bold");
+      console.log("%c✅ 神码再现 v3.6.3 永不过期版已加载", "color:#00ffea;font-weight:bold");
     } catch (e) { console.error("初始化失败:", e); alert("页面初始化出错，请刷新重试。错误: " + e.message); }
   }
 
