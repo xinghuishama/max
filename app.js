@@ -515,11 +515,13 @@ function getFive(num) {
 
         if (workerReady && analysisWorker) {
           analysisWorker.postMessage({
-            input: input,
-            killNums: state.killNums,
-            filters: getFilterSet(),
-            numProps: numProps
-          });
+  input: input,
+  killNums: state.killNums,
+  filters: getFilterSet(),
+  numProps: numProps,
+  year: new Date().getFullYear()  // ← 加这行
+});
+
         } else {
           const res = computeAnalysisMainThread(input, state.killNums, getFilterSet());
           lastRawCount = res.rawCount;
