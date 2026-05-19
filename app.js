@@ -1,6 +1,4 @@
-
-// ======================== app.js — 主线程核心逻辑 v3.6.1 ========================
-// 修复：1) renderLottery '/<<span' → '/<<span'  2) 内嵌波色兜底表，防数据丢失
+// ======================== app.js v3.6.2 ========================
 (function () {
   "use strict";
 
@@ -9,14 +7,26 @@
   const SHENGXIAO = DATA.SHENGXIAO || {};
   const numProps = DATA.numProps || [];
 
-  // ======================== 内嵌波色兜底表（防 data.js 异常） ========================
+  // 内嵌兜底表
   const RED_SET = new Set([1,2,7,8,12,13,18,19,23,24,29,30,34,35,40,45,46]);
   const BLUE_SET = new Set([3,4,9,10,14,15,20,25,26,31,36,37,41,42,47,48]);
+  const FIVE_MAP = {
+    1:"水",2:"火",3:"火",4:"金",5:"金",6:"土",7:"土",8:"木",9:"木",10:"火",
+    11:"火",12:"金",13:"金",14:"水",15:"水",16:"木",17:"木",18:"火",19:"火",
+    20:"土",21:"土",22:"水",23:"水",24:"木",25:"木",26:"金",27:"金",28:"土",
+    29:"土",30:"水",31:"水",32:"火",33:"火",34:"金",35:"金",36:"土",37:"土",
+    38:"木",39:"木",40:"火",41:"火",42:"金",43:"金",44:"水",45:"水",46:"木",
+    47:"木",48:"火",49:"火"
+  };
   function getBallColor(n) {
     if (numProps && numProps[n] && numProps[n].color) return numProps[n].color;
     if (RED_SET.has(n)) return "red";
     if (BLUE_SET.has(n)) return "blue";
     return "green";
+  }
+  function getFive(num) {
+    if (numProps && numProps[num] && numProps[num].five) return numProps[num].five;
+    return FIVE_MAP[num] || "?";
   }
 
   const API_CONFIG = {
@@ -26,22 +36,16 @@
   const HISTORY_PAGE_SIZE = 15;
   const LS_KEY = "shenma_v4_state";
   const LS_CACHE_KEY = "shenma_v4_lottery_cache";
-
-  const LIVE_WINDOW = {
-    startH: 21, startM: 33,
-    endH: 21, endM: 35
-  };
+  const LIVE_WINDOW = { startH: 21, startM: 33, endH: 21, endM: 35 };
 
   const DOM = {};
   function cacheDOM() {
     const ids = [
-      "numbers", "result", "charCount", "numberWarn", "exampleBtn", "clearBtn", "copyResultBtn",
-      "lotteryPeriod", "lotteryTime", "lastRefreshTime", "lotteryBalls", "refreshLotteryBtn",
-      "drawer-overlay", "drawer-container", "drawer-title", "drawer-content", "drawer-close", "toast"
+      "numbers","result","charCount","numberWarn","exampleBtn","clearBtn","copyResultBtn",
+      "lotteryPeriod","lotteryTime","lastRefreshTime","lotteryBalls","refreshLotteryBtn",
+      "drawer-overlay","drawer-container","drawer-title","drawer-content","drawer-close","toast"
     ];
-    ids.forEach(function (id) {
-      DOM[id.replace(/-/g, "_")] = document.getElementById(id);
-    });
+    ids.forEach(function (id) { DOM[id.replace(/-/g, "_")] = document.getElementById(id); });
     if (!DOM.drawer_content) DOM.drawer_content = document.getElementById("drawer-content");
     if (!DOM.drawer_container) DOM.drawer_container = document.getElementById("drawer-container");
     if (!DOM.drawer_overlay) DOM.drawer_overlay = document.getElementById("drawer-overlay");
@@ -51,18 +55,12 @@
 
   let state = {
     killNums: [],
-    selectedFilters: {
-      shengxiao: [], haomatou: [], weishu: [], shuduan: [],
-      bose: [], wuxing: [], bandanshuang: [], heshu: []
-    }
+    selectedFilters: { shengxiao:[], haomatou:[], weishu:[], shuduan:[], bose:[], wuxing:[], bandanshuang:[], heshu:[] }
   };
-  let subscribers = [];
-  let lastAnalysisResult = null;
-  let lastRawCount = null;
+  let subscribers = [], lastAnalysisResult = null, lastRawCount = null;
 
   function subscribe(fn) { subscribers.push(fn); }
   function notify() { subscribers.forEach(function (fn) { fn(); }); }
-
   function setKillNums(newNums) { state.killNums = [...newNums]; notify(); }
   function toggleFilter(category, value, checked) {
     if (!state.selectedFilters[category]) return;
@@ -76,17 +74,11 @@
     Object.keys(state.selectedFilters).forEach(function (k) { state.selectedFilters[k] = []; });
     notify();
   }
-  function getFilterSet() {
-    return Object.values(state.selectedFilters).flat();
-  }
+  function getFilterSet() { return Object.values(state.selectedFilters).flat(); }
 
   function saveState() {
     try {
-      localStorage.setItem(LS_KEY, JSON.stringify({
-        killNums: state.killNums,
-        selectedFilters: state.selectedFilters,
-        _t: Date.now()
-      }));
+      localStorage.setItem(LS_KEY, JSON.stringify({ killNums: state.killNums, selectedFilters: state.selectedFilters, _t: Date.now() }));
     } catch (e) {}
   }
   function loadState() {
@@ -95,34 +87,20 @@
       if (!raw) return;
       const parsed = JSON.parse(raw);
       if (!parsed || typeof parsed !== "object") return;
-      if (parsed._t && (Date.now() - parsed._t > 7 * 86400000)) {
-        localStorage.removeItem(LS_KEY);
-        return;
-      }
-      if (Array.isArray(parsed.killNums)) {
-        state.killNums = parsed.killNums.filter(function (n) {
-          return Number.isInteger(n) && n >= 1 && n <= 49;
-        });
-      }
+      if (parsed._t && (Date.now() - parsed._t > 7 * 86400000)) { localStorage.removeItem(LS_KEY); return; }
+      if (Array.isArray(parsed.killNums)) state.killNums = parsed.killNums.filter(function (n) { return Number.isInteger(n) && n >= 1 && n <= 49; });
       if (parsed.selectedFilters && typeof parsed.selectedFilters === "object") {
         Object.keys(state.selectedFilters).forEach(function (k) {
           const val = parsed.selectedFilters[k];
           if (Array.isArray(val)) state.selectedFilters[k] = Array.from(val);
         });
       }
-    } catch (e) {
-      console.warn("loadState failed", e);
-    }
+    } catch (e) { console.warn("loadState failed", e); }
   }
 
   function escapeHtml(str) {
     if (str == null) return "";
-    return String(str)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
+    return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
   }
 
   function showToast(msg) {
@@ -141,11 +119,9 @@
 
   function parseInputCount(input) {
     if (!input || !input.trim()) return { nums: [], truncated: false };
-    let cleaned = input.replace(/《.*?》/g, " ").replace(/[^0-9鼠牛虎兔龙蛇马羊猴鸡狗猪]/g, " ")
-                       .replace(/([鼠牛虎兔龙蛇马羊猴鸡狗猪])/g, " $1 ");
+    let cleaned = input.replace(/《.*?》/g, " ").replace(/[^0-9鼠牛虎兔龙蛇马羊猴鸡狗猪]/g, " ").replace(/([鼠牛虎兔龙蛇马羊猴鸡狗猪])/g, " $1 ");
     const tokens = cleaned.split(" ").filter(function (t) { return t.length > 0; });
     if (!tokens.length) return { nums: [], truncated: false };
-
     let results = [];
     for (let i = 0; i < tokens.length; i++) {
       const token = tokens[i];
@@ -161,9 +137,7 @@
     return { nums: results, truncated: truncated };
   }
 
-  let cachedMatchFuncs = null;
-  let lastFilterSignature = "";
-
+  let cachedMatchFuncs = null, lastFilterSignature = "";
   function getMatchFuncs(filters) {
     const allConds = filters || getFilterSet();
     const sig = allConds.join("\x00");
@@ -172,7 +146,6 @@
     cachedMatchFuncs = allConds.map(function (cond) { return buildMatchFunc(cond); });
     return cachedMatchFuncs;
   }
-
   function buildMatchFunc(cond) {
     if (cond.startsWith("生肖")) {
       const sx = cond.slice(2);
@@ -193,15 +166,14 @@
     }
     if (cond.endsWith("波单") || cond.endsWith("波双")) {
       const parts = cond.split("波");
-      const c = parts[0];
-      const oe = parts[1];
+      const c = parts[0]; const oe = parts[1];
       const colorMap = { 红: "red", 蓝: "blue", 绿: "green" };
       return function (n) { return numProps[n] && numProps[n].color === colorMap[c] && numProps[n].odd === oe; };
     }
-    if (["金", "木", "水", "火", "土"].includes(cond)) {
+    if (["金","木","水","火","土"].includes(cond)) {
       return function (n) { return numProps[n] && numProps[n].five === cond; };
     }
-    if (["合数单", "合数双", "大单", "大双", "小单", "小双"].includes(cond)) {
+    if (["合数单","合数双","大单","大双","小单","小双"].includes(cond)) {
       if (cond === "合数单") return function (n) { return numProps[n] && numProps[n].sumOdd === "合数单"; };
       if (cond === "合数双") return function (n) { return numProps[n] && numProps[n].sumOdd === "合数双"; };
       return function (n) { return numProps[n] && numProps[n].halfOddEven === cond; };
@@ -217,11 +189,9 @@
     const nums = parseInputCount(input).nums;
     const rawCount = new Uint16Array(50);
     for (let i = 0; i < nums.length; i++) rawCount[nums[i]]++;
-
     const killSet = new Set(killNums);
     const funcs = getMatchFuncs(filters);
     const hitCounts = new Uint8Array(50);
-
     for (let n = 1; n <= 49; n++) {
       let hit = killSet.has(n) ? 1 : 0;
       for (let i = 0; i < funcs.length; i++) {
@@ -229,7 +199,6 @@
       }
       hitCounts[n] = hit;
     }
-
     const adjustedCount = new Uint16Array(50);
     let adjustedTotal = 0, unique = 0;
     for (let n = 1; n <= 49; n++) {
@@ -241,9 +210,7 @@
     return { adjustedCount: Array.from(adjustedCount), adjustedTotal, unique, hitCounts: Array.from(hitCounts), rawCount: Array.from(rawCount) };
   }
 
-  let analysisWorker = null;
-  let workerReady = false;
-
+  let analysisWorker = null, workerReady = false;
   function initWorker() {
     if (analysisWorker) return;
     try {
@@ -264,40 +231,26 @@
   function terminateWorker() {
     if (analysisWorker) { analysisWorker.terminate(); analysisWorker = null; workerReady = false; }
   }
-
   function onWorkerMessage(e) {
     try {
       const d = e.data;
-      if (d.error) {
-        console.error("Worker returned error:", d.error);
-        runAnalysisMainThread();
-        return;
-      }
+      if (d.error) { console.error("Worker returned error:", d.error); runAnalysisMainThread(); return; }
       lastRawCount = d.rawCount;
       renderResult(d.adjustedCount, d.adjustedTotal, d.unique, d.hitCounts, d.rawCount);
-    } catch (err) {
-      console.error("onWorkerMessage error:", err);
-    }
+    } catch (err) { console.error("onWorkerMessage error:", err); }
   }
 
-  let currentUniqueElement = null;
-  let lastUniqueNum = null;
-
+  let currentUniqueElement = null, lastUniqueNum = null;
   function launchUniqueFlyEffect(targetNum, colorClass) {
-    document.querySelectorAll(".flying-unique-ball, .flying-trail").forEach(function (el) {
-      el.remove();
-    });
-
+    document.querySelectorAll(".flying-unique-ball, .flying-trail").forEach(function (el) { el.remove(); });
     const targetEl = DOM.result.querySelector('[data-num="' + targetNum + '"]');
     if (!targetEl) return;
-
     const targetRect = targetEl.getBoundingClientRect();
     const startX = window.innerWidth / 2 - 24;
     const startY = -80;
     const endX = targetRect.left + targetRect.width / 2 - 24;
     const endY = targetRect.top + targetRect.height / 2 - 24;
     const glowColor = colorClass === "ball-red" ? "#ff3366" : colorClass === "ball-green" ? "#33cc66" : "#3366ff";
-
     const ball = document.createElement("div");
     ball.className = "flying-unique-ball " + colorClass;
     ball.textContent = String(targetNum).padStart(2, "0");
@@ -305,10 +258,8 @@
     ball.style.top = startY + "px";
     ball.style.color = glowColor;
     document.body.appendChild(ball);
-
     let startTime = null;
     const duration = 1400;
-
     function dropTrail(x, y) {
       const trail = document.createElement("div");
       trail.className = "flying-trail";
@@ -324,26 +275,18 @@
       });
       setTimeout(function () { trail.remove(); }, 500);
     }
-
     function animate(timestamp) {
       if (!startTime) startTime = timestamp;
       const progress = Math.min((timestamp - startTime) / duration, 1);
-      const ease = progress < 0.5
-        ? 4 * progress * progress * progress
-        : 1 - Math.pow(-2 * progress + 2, 3) / 2;
-
+      const ease = progress < 0.5 ? 4 * progress * progress * progress : 1 - Math.pow(-2 * progress + 2, 3) / 2;
       const currentX = startX + (endX - startX) * ease;
       const currentY = startY + (endY - startY) * ease;
       const scale = 0.6 + Math.sin(progress * Math.PI) * 0.7;
       const rotate = progress * 1080;
       ball.style.transform = "translate3d(" + (currentX - startX) + "px, " + (currentY - startY) + "px, 0) scale(" + scale + ") rotate(" + rotate + "deg)";
-
-      if (progress > 0.05 && progress < 0.95 && (timestamp - startTime) % 60 < 20) {
-        dropTrail(currentX, currentY);
-      }
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      } else {
+      if (progress > 0.05 && progress < 0.95 && (timestamp - startTime) % 60 < 20) dropTrail(currentX, currentY);
+      if (progress < 1) { requestAnimationFrame(animate); }
+      else {
         ball.remove();
         targetEl.classList.remove("flash-unique");
         void targetEl.offsetWidth;
@@ -355,41 +298,26 @@
     requestAnimationFrame(animate);
   }
 
-  // ======================== 结果渲染（使用 getBallColor 兜底） ========================
   function renderResult(adjustedCount, adjustedTotal, unique, hitCounts, rawCount) {
     try {
       const container = DOM.result;
       if (!container) return;
-
-      if (currentUniqueElement) {
-        currentUniqueElement.classList.remove("flash-unique");
-        currentUniqueElement = null;
-      }
-
+      if (currentUniqueElement) { currentUniqueElement.classList.remove("flash-unique"); currentUniqueElement = null; }
       const freqMap = new Map();
       for (let n = 1; n <= 49; n++) {
         const f = adjustedCount[n];
-        if (f > 0) {
-          if (!freqMap.has(f)) freqMap.set(f, []);
-          freqMap.get(f).push(n);
-        }
+        if (f > 0) { if (!freqMap.has(f)) freqMap.set(f, []); freqMap.get(f).push(n); }
       }
       const freqs = Array.from(freqMap.keys()).sort(function (a, b) { return b - a; });
-
       let killDrawn = false;
       const avg = unique ? (adjustedTotal / unique).toFixed(2) : "0.00";
-
       const unhitNumbers = [];
-      for (let n = 1; n <= 49; n++) {
-        if (adjustedCount[n] > 0 && hitCounts[n] === 0) unhitNumbers.push(n);
-      }
+      for (let n = 1; n <= 49; n++) { if (adjustedCount[n] > 0 && hitCounts[n] === 0) unhitNumbers.push(n); }
       const isUniqueUnhit = (unhitNumbers.length === 1);
       const uniqueUnhitNum = isUniqueUnhit ? unhitNumbers[0] : null;
       const killSet = new Set(state.killNums);
-
       const sortedFreqMap = new Map();
       const htmlParts = [];
-
       for (let fi = 0; fi < freqs.length; fi++) {
         const f = freqs[fi];
         if (!killDrawn && f <= (adjustedTotal / unique)) {
@@ -403,50 +331,34 @@
           const n = nums[ni];
           const hit = hitCounts[n] || 0;
           const isGray = (hit > 0);
-          const color = getBallColor(n); // ← 使用兜底函数
+          const color = getBallColor(n);
           let baseColorClass = isGray ? "ball-gray" : (color === "red" ? "ball-red" : (color === "green" ? "ball-green" : "ball-blue"));
           const isTarget = (n === uniqueUnhitNum);
           const flashClass = isTarget ? "flash-unique" : "";
           let markHtml = "";
-          if (killSet.has(n)) {
-            markHtml = '<span class="hit-mark cross">\u2718</span>';
-          } else if (hit > 0) {
-            markHtml = '<span class="hit-mark">' + hit + '</span>';
-          }
+          if (killSet.has(n)) markHtml = '<span class="hit-mark cross">\u2718</span>';
+          else if (hit > 0) markHtml = '<span class="hit-mark">' + hit + '</span>';
           htmlParts.push('<button class="ball-3d ' + baseColorClass + " " + flashClass + '" data-num="' + n + '">' + String(n).padStart(2, "0") + markHtml + "</button>");
         }
         htmlParts.push("</div></div>");
       }
-
-      if (unique === 0) {
-        htmlParts.push('<div class="text-center py-8 text-amber-400">\u26A1 所有号码频次归零，请调整筛选条件 \u26A1</div>');
-      }
-
+      if (unique === 0) htmlParts.push('<div class="text-center py-8 text-amber-400">\u26A1 所有号码频次归零，请调整筛选条件 \u26A1</div>');
       const zeroCountNumbers = [];
-      if (rawCount && rawCount.length) {
-        for (let n = 1; n <= 49; n++) {
-          if (rawCount[n] === 0) zeroCountNumbers.push(n);
-        }
-      }
+      if (rawCount && rawCount.length) { for (let n = 1; n <= 49; n++) { if (rawCount[n] === 0) zeroCountNumbers.push(n); } }
       if (zeroCountNumbers.length > 0) {
-        if (!killDrawn) {
-          htmlParts.push('<div class="kill-line relative h-0.5 bg-gradient-to-r from-transparent via-[#00ffea] to-transparent my-3 rounded-full"></div>');
-        }
+        if (!killDrawn) htmlParts.push('<div class="kill-line relative h-0.5 bg-gradient-to-r from-transparent via-[#00ffea] to-transparent my-3 rounded-full"></div>');
         htmlParts.push('<div class="flex items-start gap-2 mb-2 flex-wrap"><span class="text-xs text-gray-500 font-mono min-w-[30px] pt-2">0次：</span><div class="flex flex-wrap gap-1.5 flex-1">');
         zeroCountNumbers.sort(function (a, b) { return a - b; });
         for (let i = 0; i < zeroCountNumbers.length; i++) {
           const n = zeroCountNumbers[i];
-          const color = getBallColor(n); // ← 兜底
+          const color = getBallColor(n);
           const colorClass = color === "red" ? "ball-red" : (color === "green" ? "ball-green" : "ball-blue");
           htmlParts.push('<button class="ball-3d ' + colorClass + '" data-num="' + n + '">' + String(n).padStart(2, "0") + "</button>");
         }
         htmlParts.push("</div></div>");
       }
-
       htmlParts.push('<div class="mt-4 grid grid-cols-3 gap-2 p-3 bg-transparent rounded-lg border border-[#00ffea]/20"><div class="text-center"><div class="text-[#00ffea] font-bold text-lg">' + unique + '</div><div class="text-xs text-gray-500">有效数字个数</div></div><div class="text-center"><div class="text-[#00ffea] font-bold text-lg">' + adjustedTotal + '</div><div class="text-xs text-gray-500">调整后总次数</div></div><div class="text-center"><div class="text-[#00ffea] font-bold text-lg">' + avg + '</div><div class="text-xs text-gray-500">调整后平均次数</div></div></div>');
-
       container.innerHTML = htmlParts.join("");
-
       if (uniqueUnhitNum) {
         currentUniqueElement = DOM.result.querySelector('[data-num="' + uniqueUnhitNum + '"]');
         if (lastUniqueNum !== uniqueUnhitNum) {
@@ -455,29 +367,13 @@
           const flyColor = color === "red" ? "ball-red" : (color === "green" ? "ball-green" : "ball-blue");
           setTimeout(function () { launchUniqueFlyEffect(uniqueUnhitNum, flyColor); }, 100);
         }
-      } else {
-        lastUniqueNum = null;
-      }
-
+      } else { lastUniqueNum = null; }
       lastAnalysisResult = { sortedFreqMap: sortedFreqMap, adjustedTotal: adjustedTotal, unique: unique, avg: avg };
     } catch (err) {
       console.error("renderResult error:", err);
       if (DOM.result) DOM.result.innerHTML = '<div class="text-center py-8 text-red-400">渲染出错，请检查控制台</div>';
     }
   }
-// ======================== 内嵌五行兜底表（防 data.js 异常） ========================
-const FIVE_MAP = {
-  1:"水",2:"火",3:"火",4:"金",5:"金",6:"土",7:"土",8:"木",9:"木",10:"火",
-  11:"火",12:"金",13:"金",14:"水",15:"水",16:"木",17:"木",18:"火",19:"火",
-  20:"土",21:"土",22:"水",23:"水",24:"木",25:"木",26:"金",27:"金",28:"土",
-  29:"土",30:"水",31:"水",32:"火",33:"火",34:"金",35:"金",36:"土",37:"土",
-  38:"木",39:"木",40:"火",41:"火",42:"金",43:"金",44:"水",45:"水",46:"木",
-  47:"木",48:"火",49:"火"
-};
-function getFive(num) {
-  if (numProps && numProps[num] && numProps[num].five) return numProps[num].five;
-  return FIVE_MAP[num] || "?";
-}
 
   function initResultDelegation() {
     const resultEl = DOM.result;
@@ -491,7 +387,6 @@ function getFive(num) {
   }
 
   let debounceTimer = null;
-
   function runAnalysis() {
     initWorker();
     if (debounceTimer) clearTimeout(debounceTimer);
@@ -503,36 +398,19 @@ function getFive(num) {
         if (DOM.numberWarn) {
           if (parsed.truncated) {
             DOM.numberWarn.classList.remove("hidden");
-            if (!window._truncToastShown) {
-              showToast("\u26A0\uFE0F 输入号码超过" + MAX_NUMBERS + "个，已截断");
-              window._truncToastShown = true;
-              setTimeout(function () { window._truncToastShown = false; }, 2000);
-            }
-          } else {
-            DOM.numberWarn.classList.add("hidden");
-          }
+            if (!window._truncToastShown) { showToast("\u26A0\uFE0F 输入号码超过" + MAX_NUMBERS + "个，已截断"); window._truncToastShown = true; setTimeout(function () { window._truncToastShown = false; }, 2000); }
+          } else { DOM.numberWarn.classList.add("hidden"); }
         }
-
         if (workerReady && analysisWorker) {
-          analysisWorker.postMessage({
-  input: input,
-  killNums: state.killNums,
-  filters: getFilterSet(),
-  numProps: numProps,
-  year: new Date().getFullYear()  // ← 加这行
-});
-
+          analysisWorker.postMessage({ input: input, killNums: state.killNums, filters: getFilterSet(), numProps: numProps, year: new Date().getFullYear() });
         } else {
           const res = computeAnalysisMainThread(input, state.killNums, getFilterSet());
           lastRawCount = res.rawCount;
           renderResult(res.adjustedCount, res.adjustedTotal, res.unique, res.hitCounts, res.rawCount);
         }
-      } catch (err) {
-        console.error("runAnalysis error:", err);
-      }
+      } catch (err) { console.error("runAnalysis error:", err); }
     }, 200);
   }
-
   function runAnalysisMainThread() {
     try {
       const input = DOM.numbers ? DOM.numbers.value : "";
@@ -541,30 +419,19 @@ function getFive(num) {
       renderResult(res.adjustedCount, res.adjustedTotal, res.unique, res.hitCounts, res.rawCount);
     } catch (err) {
       console.error("runAnalysisMainThread error:", err);
-      if (DOM.result) {
-        DOM.result.innerHTML = '<div class="text-center py-8 text-red-400">分析引擎异常，请刷新重试</div>';
-      }
+      if (DOM.result) DOM.result.innerHTML = '<div class="text-center py-8 text-red-400">分析引擎异常，请刷新重试</div>';
     }
   }
+  function onStateChange() { runAnalysis(); saveState(); }
 
-  function onStateChange() {
-    runAnalysis();
-    saveState();
-  }
-
-  let isCurrentDrawComplete = false;
-  let lastLotteryPeriod = "";
-  let isFetchingLottery = false;
-
+  let isCurrentDrawComplete = false, lastLotteryPeriod = "", isFetchingLottery = false;
   function checkDrawComplete(item) {
     if (!item || !item.openCode) return false;
     const codes = String(item.openCode).split(",").filter(function (c) { return c.trim() !== ""; });
     return codes.length >= 7;
   }
-
   async function safeFetch(url, options, retries) {
-    options = options || {};
-    retries = retries !== undefined ? retries : 2;
+    options = options || {}; retries = retries !== undefined ? retries : 2;
     for (let i = 0; i <= retries; i++) {
       try {
         let res;
@@ -575,61 +442,32 @@ function getFive(num) {
           clearTimeout(tid);
         } else {
           const fetchPromise = fetch(url, options);
-          const timeoutPromise = new Promise(function (_, reject) {
-            setTimeout(function () { reject(new Error("Timeout")); }, options.timeout || 8000);
-          });
+          const timeoutPromise = new Promise(function (_, reject) { setTimeout(function () { reject(new Error("Timeout")); }, options.timeout || 8000); });
           res = await Promise.race([fetchPromise, timeoutPromise]);
         }
         if (!res.ok) throw new Error("HTTP " + res.status);
         return res;
-      } catch (e) {
-        if (i === retries) throw e;
-        await new Promise(function (r) { setTimeout(r, 800); });
-      }
+      } catch (e) { if (i === retries) throw e; await new Promise(function (r) { setTimeout(r, 800); }); }
     }
   }
-
   async function fetchLottery() {
     if (isFetchingLottery) return;
     isFetchingLottery = true;
-
     const btn = DOM.refreshLotteryBtn;
     const origHtml = btn ? btn.innerHTML : "";
-    if (btn) {
-      btn.innerHTML = '<svg class="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>加载中...';
-      btn.disabled = true;
-    }
+    if (btn) { btn.innerHTML = '<svg class="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>加载中...'; btn.disabled = true; }
     try {
       const res = await safeFetch(API_CONFIG.live + "?_t=" + Date.now());
       let data;
-      try { data = await res.json(); }
-      catch (parseErr) { showToast("数据格式异常"); return; }
+      try { data = await res.json(); } catch (parseErr) { showToast("数据格式异常"); return; }
       if (!Array.isArray(data) || !data[0]) { showToast("暂无开奖数据"); return; }
-
       const item = data[0];
-      if (!item.openCode || typeof item.openCode !== "string" ||
-          !item.wave || typeof item.wave !== "string" ||
-          !item.zodiac || typeof item.zodiac !== "string") {
-        showToast("数据字段不完整");
-        return;
-      }
-
-      try {
-        localStorage.setItem(LS_CACHE_KEY, JSON.stringify({ data: data, time: Date.now() }));
-      } catch (e) {}
-
-      if (lastLotteryPeriod !== item.expect) {
-        lastLotteryPeriod = item.expect;
-        isCurrentDrawComplete = false;
-      }
+      if (!item.openCode || typeof item.openCode !== "string" || !item.wave || typeof item.wave !== "string" || !item.zodiac || typeof item.zodiac !== "string") { showToast("数据字段不完整"); return; }
+      try { localStorage.setItem(LS_CACHE_KEY, JSON.stringify({ data: data, time: Date.now() })); } catch (e) {}
+      if (lastLotteryPeriod !== item.expect) { lastLotteryPeriod = item.expect; isCurrentDrawComplete = false; }
       renderLottery(item);
-
-      if (!isCurrentDrawComplete && checkDrawComplete(item)) {
-        isCurrentDrawComplete = true;
-        showToast("当期开奖已完成，自动刷新停止");
-      } else {
-        showToast("刷新成功");
-      }
+      if (!isCurrentDrawComplete && checkDrawComplete(item)) { isCurrentDrawComplete = true; showToast("当期开奖已完成，自动刷新停止"); }
+      else { showToast("刷新成功"); }
       if (DOM.lastRefreshTime) DOM.lastRefreshTime.textContent = "上次刷新：" + new Date().toLocaleTimeString();
     } catch (e) {
       console.error("fetchLottery error:", e);
@@ -637,24 +475,16 @@ function getFive(num) {
         const cacheRaw = localStorage.getItem(LS_CACHE_KEY);
         if (cacheRaw) {
           const cache = JSON.parse(cacheRaw);
-          if (cache.data && cache.data[0]) {
-            renderLottery(cache.data[0]);
-            showToast("离线模式：显示缓存数据");
-            return;
-          }
+          if (cache.data && cache.data[0]) { renderLottery(cache.data[0]); showToast("离线模式：显示缓存数据"); return; }
         }
       } catch (cacheErr) {}
       showToast("获取开奖失败");
     } finally {
       isFetchingLottery = false;
-      if (btn) {
-        btn.innerHTML = origHtml;
-        btn.disabled = false;
-      }
+      if (btn) { btn.innerHTML = origHtml; btn.disabled = false; }
     }
   }
 
-  // ======================== 真正修复：'/<span class="' ========================
   function renderLottery(item) {
     const codes = String(item.openCode || "").split(",").map(function (c) { return escapeHtml(c.trim()); });
     const waves = String(item.wave || "").split(",").map(function (w) {
@@ -670,7 +500,6 @@ function getFive(num) {
     container.className = "result-balls-row";
     container.innerHTML = "";
     const wxClassMap = { 金: "wx-gold", 木: "wx-wood", 水: "wx-water", 火: "wx-fire", 土: "wx-earth" };
-
     for (let i = 0; i < 6 && i < codes.length; i++) {
       const num = parseInt(codes[i], 10);
       const colorClass = waves[i] === "red" ? "result-ball-red" : (waves[i] === "green" ? "result-ball-green" : "result-ball-blue");
@@ -678,7 +507,6 @@ function getFive(num) {
       const wxCls = wxClassMap[wx] || "";
       const div = document.createElement("div");
       div.className = "result-ball-item";
-      // 真正修复：'/<span class="' （只有一个 <）
       div.innerHTML = '<div class="result-ball ' + colorClass + '" style="animation-delay: ' + (i * 150) + 'ms">' + escapeHtml(codes[i].padStart(2, "0")) + '<div class="result-ball-meta">' + escapeHtml(zodiacs[i] || "") + '/<span class="' + wxCls + '">' + wx + "</span></div></div>";
       container.appendChild(div);
     }
@@ -687,14 +515,12 @@ function getFive(num) {
       plus.className = "result-plus-sign";
       plus.textContent = "+";
       container.appendChild(plus);
-
       const num = parseInt(codes[6], 10);
       const colorClass = waves[6] === "red" ? "result-ball-red" : (waves[6] === "green" ? "result-ball-green" : "result-ball-blue");
       const wx = (num >= 1 && num <= 49) ? getFive(num) : "?";
       const wxCls = wxClassMap[wx] || "";
       const div = document.createElement("div");
       div.className = "result-ball-item";
-      // 真正修复
       div.innerHTML = '<div class="result-ball ' + colorClass + '" style="animation-delay: ' + (6 * 150) + 'ms">' + escapeHtml(codes[6].padStart(2, "0")) + '<div class="result-ball-meta">' + escapeHtml(zodiacs[6] || "") + '/<span class="' + wxCls + '">' + wx + "</span></div></div>";
       container.appendChild(div);
     }
@@ -703,12 +529,7 @@ function getFive(num) {
     if (DOM.lotteryTime) DOM.lotteryTime.textContent = escapeHtml((item.openTime || "--").replace(" ", "\n"));
   }
 
-  let currentHistoryData = [];
-  let currentHistorySorted = [];
-  let currentHistoryPage = 1;
-  let historyCache = {};
-  let historyYearLoaded = null;
-
+  let currentHistoryData = [], currentHistorySorted = [], currentHistoryPage = 1, historyCache = {}, historyYearLoaded = null;
   function renderBallsHTML(codes, waves, zodiacs) {
     let html = "";
     codes.forEach(function (code, i) {
@@ -722,41 +543,31 @@ function getFive(num) {
     });
     return html;
   }
-
   function ensureHistorySorted() {
     if (currentHistorySorted.length > 0) return;
     const seen = new Set();
     const unique = [];
     for (let i = 0; i < currentHistoryData.length; i++) {
       const item = currentHistoryData[i];
-      if (item && item.expect && !seen.has(item.expect)) {
-        seen.add(item.expect);
-        unique.push(item);
-      }
+      if (item && item.expect && !seen.has(item.expect)) { seen.add(item.expect); unique.push(item); }
     }
-    currentHistorySorted = unique.sort(function (a, b) {
-      return String(b.expect).localeCompare(String(a.expect), undefined, { numeric: true });
-    });
+    currentHistorySorted = unique.sort(function (a, b) { return String(b.expect).localeCompare(String(a.expect), undefined, { numeric: true }); });
   }
-
   function renderHistoryPage() {
     try {
       const cont = document.getElementById("historyContent");
       const pagi = document.getElementById("historyPagination");
       ensureHistorySorted();
       const sorted = currentHistorySorted;
-
       if (!sorted || sorted.length === 0) {
         if (cont) cont.innerHTML = '<div style="color:#9ca3af; padding:32px 0; text-align:center;">暂无数据</div>';
         if (pagi) pagi.classList.add("dhidden");
         return;
       }
-
       const totalPages = Math.max(1, Math.ceil(sorted.length / HISTORY_PAGE_SIZE));
       if (currentHistoryPage > totalPages) currentHistoryPage = totalPages;
       const start = (currentHistoryPage - 1) * HISTORY_PAGE_SIZE;
       const pageData = sorted.slice(start, start + HISTORY_PAGE_SIZE);
-
       const frag = document.createDocumentFragment();
       for (let i = 0; i < pageData.length; i++) {
         const item = pageData[i];
@@ -767,55 +578,40 @@ function getFive(num) {
           const waves = (item.wave || "").split(",").map(function (w) { return escapeHtml(w.trim()); });
           const zodiacs = (item.zodiac || "").split(",").map(function (z) { return escapeHtml(z.trim()); });
           ballsHtml = renderBallsHTML(codes, waves, zodiacs);
-        } else {
-          ballsHtml = '<div style="display:flex; justify-content:center; align-items:center; padding:24px 0; color:#fbbf24; font-size:14px; font-weight:500;">待开奖</div>';
-        }
+        } else { ballsHtml = '<div style="display:flex; justify-content:center; align-items:center; padding:24px 0; color:#fbbf24; font-size:14px; font-weight:500;">待开奖</div>'; }
         const div = document.createElement("div");
         div.className = "history-item";
         div.innerHTML = '<div class="history-item-header">第' + expect.slice(4) + "期 · " + escapeHtml(item.openTime && item.openTime.slice(5, 16) || "") + '</div><div class="history-balls-row">' + ballsHtml + "</div>";
         frag.appendChild(div);
       }
-      if (cont) {
-        cont.innerHTML = "";
-        cont.appendChild(frag);
-      }
-
+      if (cont) { cont.innerHTML = ""; cont.appendChild(frag); }
       const pageNumEl = document.getElementById("historyPageNum");
       const totalPagesEl = document.getElementById("historyTotalPages");
       if (pageNumEl) pageNumEl.textContent = currentHistoryPage;
       if (totalPagesEl) totalPagesEl.textContent = totalPages;
-
       if (pagi) {
-        if (totalPages <= 1) {
-          pagi.classList.add("dhidden");
-        } else {
-          pagi.classList.remove("dhidden");
-        }
+        if (totalPages <= 1) pagi.classList.add("dhidden"); else pagi.classList.remove("dhidden");
         const prevBtn = document.getElementById("history-prev");
         const nextBtn = document.getElementById("history-next");
         if (prevBtn) prevBtn.disabled = currentHistoryPage <= 1;
         if (nextBtn) nextBtn.disabled = currentHistoryPage >= totalPages;
       }
-    } catch (err) {
-      console.error("renderHistoryPage error:", err);
-    }
+    } catch (err) { console.error("renderHistoryPage error:", err); }
   }
 
   const DrawerSystem = {
     current: null,
     templates: {
-      shama: function () {
-        return '<textarea id="kill-input" rows="3" class="dinput">' + state.killNums.join(" ") + "</textarea>";
-      },
+      shama: function () { return '<textarea id="kill-input" rows="3" class="dinput">' + state.killNums.join(" ") + "</textarea>"; },
       shengxiao: function () {
-        const sxs = ["鼠", "牛", "虎", "兔", "龙", "蛇", "马", "羊", "猴", "鸡", "狗", "猪"];
+        const sxs = ["鼠","牛","虎","兔","龙","蛇","马","羊","猴","鸡","狗","猪"];
         const sel = state.selectedFilters.shengxiao;
         return '<div class="dgrid-6">' + sxs.map(function (sx) {
           return '<label><input type="checkbox" class="filter-checkbox hidden" value="生肖' + sx + '" data-drawer="shengxiao" ' + (sel.includes("生肖" + sx) ? "checked" : "") + '><span class="filter-label dbtn">' + sx + "</span></label>";
         }).join("") + "</div>";
       },
       haomatou: function () {
-        const heads = [["0头单", "1头单", "2头单", "3头单", "4头单"], ["0头双", "1头双", "2头双", "3头双", "4头双"]];
+        const heads = [["0头单","1头单","2头单","3头单","4头单"],["0头双","1头双","2头双","3头双","4头双"]];
         const sel = state.selectedFilters.haomatou;
         return heads.map(function (row) {
           return '<div class="dflex">' + row.map(function (h) {
@@ -824,7 +620,7 @@ function getFive(num) {
         }).join("");
       },
       weishu: function () {
-        const tails = [["0尾", "1尾", "2尾", "3尾", "4尾"], ["5尾", "6尾", "7尾", "8尾", "9尾"]];
+        const tails = [["0尾","1尾","2尾","3尾","4尾"],["5尾","6尾","7尾","8尾","9尾"]];
         const sel = state.selectedFilters.weishu;
         return tails.map(function (row) {
           return '<div class="dflex">' + row.map(function (t) {
@@ -833,14 +629,14 @@ function getFive(num) {
         }).join("");
       },
       shuduan: function () {
-        const duans = ["1段", "2段", "3段", "4段", "5段", "6段", "7段"];
+        const duans = ["1段","2段","3段","4段","5段","6段","7段"];
         const sel = state.selectedFilters.shuduan;
         return '<div class="dflex-wrap">' + duans.map(function (d) {
           return '<label><input type="checkbox" class="filter-checkbox hidden" value="' + d + '" data-drawer="shuduan" ' + (sel.includes(d) ? "checked" : "") + '><span class="filter-label dbtn dbtn-md">' + d + "</span></label>";
         }).join("") + "</div>";
       },
       bose: function () {
-        const items = [["红波单", "蓝波单", "绿波单"], ["红波双", "蓝波双", "绿波双"]];
+        const items = [["红波单","蓝波单","绿波单"],["红波双","蓝波双","绿波双"]];
         const sel = state.selectedFilters.bose;
         return items.map(function (row) {
           return '<div class="dflex">' + row.map(function (item) {
@@ -849,27 +645,15 @@ function getFive(num) {
         }).join("");
       },
       wuxing: function () {
-        const wx = {
-          "金": "04 05 12 13 26 27 34 35 42 43",
-          "木": "08 09 16 17 24 25 38 39 46 47",
-          "水": "01 14 15 22 23 30 31 44 45",
-          "火": "02 03 10 11 18 19 32 33 40 41 48 49",
-          "土": "06 07 20 21 28 29 36 37"
-        };
+        const wx = { "金":"04 05 12 13 26 27 34 35 42 43", "木":"08 09 16 17 24 25 38 39 46 47", "水":"01 14 15 22 23 30 31 44 45", "火":"02 03 10 11 18 19 32 33 40 41 48 49", "土":"06 07 20 21 28 29 36 37" };
         const sel = state.selectedFilters.wuxing;
         return '<div class="dspace-y">' + Object.entries(wx).map(function (entry) {
           const k = entry[0], v = entry[1];
-          return '<div class="wuxing-row">' +
-            '<label class="ditems-center" style="gap:8px;min-width:0;flex-shrink:0;">' +
-              '<input type="checkbox" class="filter-checkbox hidden" value="' + k + '" data-drawer="wuxing" ' + (sel.includes(k) ? "checked" : "") + '>' +
-              '<span class="filter-label dbtn dbtn-fixed wuxing-btn-fixed">' + k + '</span>' +
-            '</label>' +
-            '<span class="wuxing-nums">' + v + '</span>' +
-          '</div>';
-        }).join("") + '</div>';
+          return '<div class="wuxing-row"><label class="ditems-center" style="gap:8px;min-width:0;flex-shrink:0;"><input type="checkbox" class="filter-checkbox hidden" value="' + k + '" data-drawer="wuxing" ' + (sel.includes(k) ? "checked" : "") + '><span class="filter-label dbtn dbtn-fixed wuxing-btn-fixed">' + k + '</span></label><span class="wuxing-nums">' + v + "</span></div>";
+        }).join("") + "</div>";
       },
       bandanshuang: function () {
-        const items = [["合数单", "小单", "大单"], ["合数双", "小双", "大双"]];
+        const items = [["合数单","小单","大单"],["合数双","小双","大双"]];
         const sel = state.selectedFilters.bandanshuang;
         return items.map(function (row) {
           return '<div class="dflex">' + row.map(function (item) {
@@ -885,42 +669,13 @@ function getFive(num) {
         }).join("") + "</div>";
       },
       live: function () {
-        return '<div class="dflex-col" style="height: calc(90vh - 68px); min-height: 480px;">' +
-          '<div class="dflex-between dmb-2 dpx-1">' +
-          '<span class="dtext-xs dtext-gray">直连视频流播放 · 自动切换备选源</span>' +
-          '<a href="https://macaujc.com/open_video2/" target="_blank" rel="noopener noreferrer" style="font-size:12px; background:rgba(0,255,234,0.2); color:#00ffea; padding:6px 12px; border-radius:8px; border:1px solid rgba(0,255,234,0.4); text-decoration:none; display:inline-flex; align-items:center; gap:4px;">' +
-          '<svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>新窗口观看</a></div>' +
-          '<div class="dflex-wrap dmb-3" id="live-source-btns">' +
-          '<button data-src-idx="0" class="dlive-btn active">源1·API获取</button>' +
-          '<button data-src-idx="1" class="dlive-btn">源2·HLS</button>' +
-          '<button data-src-idx="2" class="dlive-btn">源3·FLV</button>' +
-          "</div>" +
-          '<div class="dvideo-box">' +
-          '<video id="live-video" style="width:100%; height:100%; background:#000;" controls autoplay playsinline muted></video>' +
-          '<div id="live-loading" class="doverlay">' +
-          '<svg width="32" height="32" class="animate-spin" style="color:#00ffea; margin-bottom:12px;" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>' +
-          '<span class="dtext-sm dtext-gray" id="live-status">正在获取直播源...</span></div>' +
-          '<div id="live-error" class="dhidden doverlay" style="background:#0a0a12; z-index:20; padding:24px; text-align:center;">' +
-          '<svg width="48" height="48" style="color:#f87171; margin-bottom:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>' +
-          '<p style="color:#f87171; font-weight:bold; margin-bottom:4px;">直播源加载失败</p>' +
-          '<p class="dtext-xs dtext-gray" style="margin-bottom:16px;">所有备选源均无法连接</p>' +
-          '<a href="https://macaujc.com/open_video2/" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; gap:8px; background:linear-gradient(135deg,#00ffea,#0088ff); color:#000; font-weight:bold; padding:10px 24px; border-radius:12px; text-decoration:none; margin-bottom:8px;">' +
-          '<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>macaujc.com 直播</a>' +
-          '<a href="https://momarksix.org/video" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; gap:8px; background:#1a1a2a; color:#00ffea; font-weight:bold; padding:10px 24px; border-radius:12px; border:1px solid rgba(0,255,234,0.3); text-decoration:none;">' +
-          '<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>备用直播站</a></div></div></div>';
+        return '<div class="dflex-col" style="height: calc(90vh - 68px); min-height: 480px;"><div class="dflex-between dmb-2 dpx-1"><span class="dtext-xs dtext-gray">直连视频流播放 · 自动切换备选源</span><a href="https://macaujc.com/open_video2/" target="_blank" rel="noopener noreferrer" style="font-size:12px; background:rgba(0,255,234,0.2); color:#00ffea; padding:6px 12px; border-radius:8px; border:1px solid rgba(0,255,234,0.4); text-decoration:none; display:inline-flex; align-items:center; gap:4px;"><svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>新窗口观看</a></div><div class="dflex-wrap dmb-3" id="live-source-btns"><button data-src-idx="0" class="dlive-btn active">源1·API获取</button><button data-src-idx="1" class="dlive-btn">源2·HLS</button><button data-src-idx="2" class="dlive-btn">源3·FLV</button></div><div class="dvideo-box"><video id="live-video" style="width:100%; height:100%; background:#000;" controls autoplay playsinline muted></video><div id="live-loading" class="doverlay"><svg width="32" height="32" class="animate-spin" style="color:#00ffea; margin-bottom:12px;" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg><span class="dtext-sm dtext-gray" id="live-status">正在获取直播源...</span></div><div id="live-error" class="dhidden doverlay" style="background:#0a0a12; z-index:20; padding:24px; text-align:center;"><svg width="48" height="48" style="color:#f87171; margin-bottom:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg><p style="color:#f87171; font-weight:bold; margin-bottom:4px;">直播源加载失败</p><p class="dtext-xs dtext-gray" style="margin-bottom:16px;">所有备选源均无法连接</p><a href="https://macaujc.com/open_video2/" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; gap:8px; background:linear-gradient(135deg,#00ffea,#0088ff); color:#000; font-weight:bold; padding:10px 24px; border-radius:12px; text-decoration:none; margin-bottom:8px;"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>macaujc.com 直播</a><a href="https://momarksix.org/video" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; gap:8px; background:#1a1a2a; color:#00ffea; font-weight:bold; padding:10px 24px; border-radius:12px; border:1px solid rgba(0,255,234,0.3); text-decoration:none;"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>备用直播站</a></div></div></div>';
       },
       history: function () {
         let opts = "";
         const currentYear = new Date().getFullYear();
-        for (let y = currentYear; y >= 2020; y--) {
-          opts += '<option value="' + y + '">' + y + "年</option>";
-        }
-        return '<div><select id="historyYear" class="dselect"><option value="">选择年份</option>' + opts + "</select>" +
-          '<div id="historyLoading" class="dhidden dtext-center dpy-4"><svg class="animate-spin" style="width:24px; height:24px; margin:0 auto; color:#00ffea;" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div>' +
-          '<div id="historyContent" class="dmt-3 hide-scrollbar"></div>' +
-          '<div id="historyPagination" class="dflex-between dmt-6 dpx-1 dhidden"><button id="history-prev" class="dpage-btn">← 上1页</button>' +
-          '<div class="dtext-sm" style="text-align:center;">第 <span id="historyPageNum" style="font-weight:bold; color:#00ffea;">1</span> 页 / <span id="historyTotalPages" class="dtext-gray">1</span> 页</div>' +
-          '<button id="history-next" class="dpage-btn">下1页 →</button></div></div>';
+        for (let y = currentYear; y >= 2020; y--) opts += '<option value="' + y + '">' + y + "年</option>";
+        return '<div><select id="historyYear" class="dselect"><option value="">选择年份</option>' + opts + "</select><div id="historyLoading" class="dhidden dtext-center dpy-4"><svg class="animate-spin" style="width:24px; height:24px; margin:0 auto; color:#00ffea;" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div><div id="historyContent" class="dmt-3 hide-scrollbar"></div><div id="historyPagination" class="dflex-between dmt-6 dpx-1 dhidden"><button id="history-prev" class="dpage-btn">← 上1页</button><div class="dtext-sm" style="text-align:center;">第 <span id="historyPageNum" style="font-weight:bold; color:#00ffea;">1</span> 页 / <span id="historyTotalPages" class="dtext-gray">1</span> 页</div><button id="history-next" class="dpage-btn">下1页 →</button></div></div>";
       }
     },
     open: function (type) {
@@ -929,62 +684,22 @@ function getFive(num) {
       const titles = { shama: "杀码", shengxiao: "生肖", haomatou: "头数", weishu: "尾数", shuduan: "数段", bose: "波色", wuxing: "五行", bandanshuang: "半单双", heshu: "合数", live: "开奖直播", history: "历史开奖" };
       const titleText = titles[type] || "筛选器";
       if (DOM.drawer_title) DOM.drawer_title.textContent = titleText;
-
       let contentDiv = DOM.drawer_content || document.getElementById("drawer-content");
-      if (!contentDiv) {
-        console.error("drawer-content 元素缺失");
-        showToast("抽屉初始化失败，请刷新页面");
-        return;
-      }
-
+      if (!contentDiv) { console.error("drawer-content 缺失"); showToast("抽屉初始化失败，请刷新页面"); return; }
       try {
         const templateFn = this.templates[type];
-        if (templateFn) {
-          contentDiv.innerHTML = templateFn();
-        } else {
-          contentDiv.innerHTML = "<p>暂无内容</p>";
-          console.warn("未找到抽屉模板:", type);
-        }
-      } catch (err) {
-        console.error("Drawer open error:", err);
-        contentDiv.innerHTML = '<p style="color:#f87171;">抽屉加载出错</p>';
-      }
-
-      if (DOM.drawer_overlay) {
-        DOM.drawer_overlay.classList.remove("hidden");
-        DOM.drawer_overlay.style.display = "block";
-        setTimeout(function () {
-          DOM.drawer_overlay.classList.remove("opacity-0");
-          DOM.drawer_overlay.style.opacity = "1";
-        }, 10);
-      }
+        if (templateFn) contentDiv.innerHTML = templateFn(); else { contentDiv.innerHTML = "<p>暂无内容</p>"; console.warn("未找到抽屉模板:", type); }
+      } catch (err) { console.error("Drawer open error:", err); contentDiv.innerHTML = '<p style="color:#f87171;">抽屉加载出错</p>'; }
+      if (DOM.drawer_overlay) { DOM.drawer_overlay.classList.remove("hidden"); DOM.drawer_overlay.style.display = "block"; setTimeout(function () { DOM.drawer_overlay.classList.remove("opacity-0"); DOM.drawer_overlay.style.opacity = "1"; }, 10); }
       if (DOM.drawer_container) DOM.drawer_container.classList.add("open");
       this.updateNavState(type);
-
-      if (type === "history") {
-        setTimeout(function () {
-          const sel = document.getElementById("historyYear");
-          if (sel && !sel.value) sel.value = historyYearLoaded || "";
-          if (sel) sel.dispatchEvent(new Event("change"));
-        }, 50);
-      }
-      if (type === "live") {
-        setTimeout(function () {
-          connectLiveSource(0);
-        }, 100);
-      }
+      if (type === "history") setTimeout(function () { const sel = document.getElementById("historyYear"); if (sel && !sel.value) sel.value = historyYearLoaded || ""; if (sel) sel.dispatchEvent(new Event("change")); }, 50);
+      if (type === "live") setTimeout(function () { connectLiveSource(0); }, 100);
     },
     close: function () {
       destroyLivePlayer();
       if (DOM.drawer_container) DOM.drawer_container.classList.remove("open");
-      if (DOM.drawer_overlay) {
-        DOM.drawer_overlay.classList.add("opacity-0");
-        DOM.drawer_overlay.style.opacity = "0";
-        setTimeout(function () {
-          DOM.drawer_overlay.classList.add("hidden");
-          DOM.drawer_overlay.style.display = "none";
-        }, 300);
-      }
+      if (DOM.drawer_overlay) { DOM.drawer_overlay.classList.add("opacity-0"); DOM.drawer_overlay.style.opacity = "0"; setTimeout(function () { DOM.drawer_overlay.classList.add("hidden"); DOM.drawer_overlay.style.display = "none"; }, 300); }
       this.current = null;
       this.updateNavState(null);
     },
@@ -992,15 +707,12 @@ function getFive(num) {
       const content = DOM.drawer_content || document.getElementById("drawer-content");
       if (!content || content._delegationBound) return;
       content._delegationBound = true;
-
       content.addEventListener("change", function (e) {
         const cb = e.target;
         if (cb.classList && cb.classList.contains("filter-checkbox")) {
           const dr = cb.dataset.drawer;
           const val = cb.value;
-          if (dr && state.selectedFilters[dr] !== undefined) {
-            toggleFilter(dr, val, cb.checked);
-          }
+          if (dr && state.selectedFilters[dr] !== undefined) toggleFilter(dr, val, cb.checked);
           return;
         }
         if (e.target.id === "historyYear") {
@@ -1012,54 +724,30 @@ function getFive(num) {
           if (loadDiv) loadDiv.classList.remove("dhidden");
           (async function () {
             try {
-              if (historyCache[year]) {
-                currentHistoryData = historyCache[year];
-              } else {
+              if (historyCache[year]) currentHistoryData = historyCache[year];
+              else {
                 const res = await safeFetch(API_CONFIG.historyBase + year);
                 const json = await res.json();
-                if (json.code === 200 && Array.isArray(json.data)) {
-                  currentHistoryData = json.data;
-                  historyCache[year] = json.data;
-                } else {
-                  currentHistoryData = [];
-                }
+                if (json.code === 200 && Array.isArray(json.data)) { currentHistoryData = json.data; historyCache[year] = json.data; }
+                else currentHistoryData = [];
               }
               currentHistorySorted = [];
               currentHistoryPage = 1;
               renderHistoryPage();
-            } catch (e) {
-              console.error("history fetch error:", e);
-              currentHistoryData = [];
-              if (cont) cont.innerHTML = '<div style="color:#f87171;">加载失败</div>';
-            } finally {
-              if (loadDiv) loadDiv.classList.add("dhidden");
-            }
+            } catch (e) { console.error("history fetch error:", e); currentHistoryData = []; if (cont) cont.innerHTML = '<div style="color:#f87171;">加载失败</div>'; }
+            finally { if (loadDiv) loadDiv.classList.add("dhidden"); }
           })();
         }
       });
-
       content.addEventListener("input", function (e) {
         const el = e.target;
-        if (el.id === "kill-input") {
-          const parsed = parseInputCount(el.value);
-          setKillNums(parsed.nums.filter(function (n) { return n >= 1 && n <= 49; }));
-        }
+        if (el.id === "kill-input") { const parsed = parseInputCount(el.value); setKillNums(parsed.nums.filter(function (n) { return n >= 1 && n <= 49; })); }
       });
-
       content.addEventListener("click", function (e) {
         const prevBtn = e.target.closest("#history-prev");
         const nextBtn = e.target.closest("#history-next");
-        if (prevBtn) {
-          if (currentHistoryPage > 1) { currentHistoryPage--; renderHistoryPage(); }
-          return;
-        }
-        if (nextBtn) {
-          ensureHistorySorted();
-          const totalPages = Math.ceil(currentHistorySorted.length / HISTORY_PAGE_SIZE);
-          if (currentHistoryPage < totalPages) { currentHistoryPage++; renderHistoryPage(); }
-          return;
-        }
-
+        if (prevBtn) { if (currentHistoryPage > 1) { currentHistoryPage--; renderHistoryPage(); } return; }
+        if (nextBtn) { ensureHistorySorted(); const totalPages = Math.ceil(currentHistorySorted.length / HISTORY_PAGE_SIZE); if (currentHistoryPage < totalPages) { currentHistoryPage++; renderHistoryPage(); } return; }
         const liveBtn = e.target.closest(".dlive-btn");
         if (liveBtn) {
           const idx = parseInt(liveBtn.dataset.srcIdx, 10);
@@ -1067,17 +755,8 @@ function getFive(num) {
             liveSourceIndex = idx;
             const btns = document.querySelectorAll(".dlive-btn");
             btns.forEach(function (b, i) {
-              if (i === idx) {
-                b.classList.add("active");
-                b.style.background = "#00ffea";
-                b.style.color = "#000";
-                b.style.borderColor = "#00ffea";
-              } else {
-                b.classList.remove("active");
-                b.style.background = "#1a1a2a";
-                b.style.color = "#9ca3af";
-                b.style.borderColor = "rgba(0,255,234,0.2)";
-              }
+              if (i === idx) { b.classList.add("active"); b.style.background = "#00ffea"; b.style.color = "#000"; b.style.borderColor = "#00ffea"; }
+              else { b.classList.remove("active"); b.style.background = "#1a1a2a"; b.style.color = "#9ca3af"; b.style.borderColor = "rgba(0,255,234,0.2)"; }
             });
             connectLiveSource(idx);
           }
@@ -1088,14 +767,8 @@ function getFive(num) {
     updateNavState: function (activeType) {
       document.querySelectorAll(".nav-item").forEach(function (el) {
         const dr = el.dataset.drawer;
-        if (dr === activeType) {
-          el.classList.add("bg-[#00ffea]", "text-black");
-          el.classList.remove("bg-transparent", "text-gray-400");
-        } else {
-          el.classList.remove("bg-[#00ffea]", "text-black");
-          if (dr === "selectnone") el.classList.add("bg-[#ff0055]/20", "text-[#ff0055]");
-          else el.classList.add("bg-transparent", "text-gray-400");
-        }
+        if (dr === activeType) { el.classList.add("bg-[#00ffea]", "text-black"); el.classList.remove("bg-transparent", "text-gray-400"); }
+        else { el.classList.remove("bg-[#00ffea]", "text-black"); if (dr === "selectnone") el.classList.add("bg-[#ff0055]/20", "text-[#ff0055]"); else el.classList.add("bg-transparent", "text-gray-400"); }
       });
     }
   };
@@ -1104,265 +777,120 @@ function getFive(num) {
     if (!lastAnalysisResult) { showToast("暂无分析结果"); return; }
     const sortedFreqMap = lastAnalysisResult.sortedFreqMap;
     let text = "";
-    sortedFreqMap.forEach(function (nums, f) {
-      text += f + "次：" + nums.map(function (n) { return String(n).padStart(2, "0"); }).join(" ") + "\n";
-    });
+    sortedFreqMap.forEach(function (nums, f) { text += f + "次：" + nums.map(function (n) { return String(n).padStart(2, "0"); }).join(" ") + "\n"; });
     if (!text.trim()) return;
     fallbackCopy(text.trim());
   }
-  function copyNumber(n) {
-    fallbackCopy(String(n).padStart(2, "0"));
-  }
+  function copyNumber(n) { fallbackCopy(String(n).padStart(2, "0")); }
   function fallbackCopy(text) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(function () {
-        showToast("已复制");
-      }).catch(function () {
-        execCopy(text);
-      });
-    } else {
-      execCopy(text);
-    }
+      navigator.clipboard.writeText(text).then(function () { showToast("已复制"); }).catch(function () { execCopy(text); });
+    } else { execCopy(text); }
   }
   function execCopy(text) {
     const ta = document.createElement("textarea");
-    ta.value = text;
-    ta.style.position = "fixed";
-    ta.style.left = "-9999px";
-    ta.style.top = "0";
-    ta.setAttribute("readonly", "");
-    document.body.appendChild(ta);
-    ta.select();
-    ta.setSelectionRange(0, text.length);
-    try {
-      const ok = document.execCommand("copy");
-      showToast(ok ? "已复制" : "复制失败");
-    } catch (e) {
-      showToast("复制失败");
-    }
+    ta.value = text; ta.style.position = "fixed"; ta.style.left = "-9999px"; ta.style.top = "0"; ta.setAttribute("readonly", "");
+    document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, text.length);
+    try { const ok = document.execCommand("copy"); showToast(ok ? "已复制" : "复制失败"); } catch (e) { showToast("复制失败"); }
     document.body.removeChild(ta);
   }
   window.copyResult = copyResult;
 
-  let currentHls = null;
-  let currentFlvPlayer = null;
-  let liveSourceIndex = 0;
-  let liveSourceTimer = null;
-  let liveSwitchLock = false;
-
+  let currentHls = null, currentFlvPlayer = null, liveSourceIndex = 0, liveSourceTimer = null, liveSwitchLock = false;
   const LIVE_SOURCES = [
     { name: "API获取", type: "auto", url: "" },
     { name: "HLS源1", type: "hls", url: "https://media.macaumarksix.com/live/marksix.m3u8" },
     { name: "FLV源1", type: "flv", url: "https://media.macaumarksix.com/live/marksix.flv" }
   ];
-
-  function getSourceTimeout(idx) {
-    if (idx === 0) return 10000;
-    if (idx === 1) return 3000;
-    return 15000;
-  }
-
+  function getSourceTimeout(idx) { if (idx === 0) return 10000; if (idx === 1) return 3000; return 15000; }
   function getLiveWindowStatus() {
     const now = new Date();
     const sec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
     const start = LIVE_WINDOW.startH * 3600 + LIVE_WINDOW.startM * 60;
-    const end   = LIVE_WINDOW.endH   * 3600 + LIVE_WINDOW.endM   * 60;
+    const end = LIVE_WINDOW.endH * 3600 + LIVE_WINDOW.endM * 60;
     if (sec >= start && sec <= end) return { ok: true, wait: 0 };
     if (sec < start) return { ok: false, wait: start - sec };
     return { ok: false, wait: null };
   }
-
-  function clearLiveTimer() {
-    if (liveSourceTimer) { clearTimeout(liveSourceTimer); liveSourceTimer = null; }
-  }
-
+  function clearLiveTimer() { if (liveSourceTimer) { clearTimeout(liveSourceTimer); liveSourceTimer = null; } }
   function connectLiveSource(idx) {
     if (liveSwitchLock) return;
-
     const liveStatus = getLiveWindowStatus();
     if (!liveStatus.ok) {
       const loading = document.getElementById("live-loading");
-      const error   = document.getElementById("live-error");
+      const error = document.getElementById("live-error");
       if (loading) loading.classList.add("dhidden");
       if (error) {
         error.classList.remove("dhidden");
         let msg;
-        if (liveStatus.wait !== null) {
-          const m = Math.floor(liveStatus.wait / 60);
-          const s = liveStatus.wait % 60;
-          msg = "距离开播还有 " + m + "分" + (s < 10 ? "0" : "") + s + "秒";
-        } else {
-          msg = "本期直播已结束，请等待下期";
-        }
-        error.innerHTML = '<div style="text-align:center; padding:24px;">' +
-          '<svg width="48" height="48" style="color:#fbbf24; margin:0 auto 12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>' +
-          '<p style="color:#fbbf24; font-weight:bold; margin-bottom:8px;">⏰ 非直播时段</p>' +
-          '<p style="color:#9ca3af; font-size:12px;">' + msg + '</p>' +
-          '</div>';
+        if (liveStatus.wait !== null) { const m = Math.floor(liveStatus.wait / 60); const s = liveStatus.wait % 60; msg = "距离开播还有 " + m + "分" + (s < 10 ? "0" : "") + s + "秒"; }
+        else msg = "本期直播已结束，请等待下期";
+        error.innerHTML = '<div style="text-align:center; padding:24px;"><svg width="48" height="48" style="color:#fbbf24; margin:0 auto 12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><p style="color:#fbbf24; font-weight:bold; margin-bottom:8px;">⏰ 非直播时段</p><p style="color:#9ca3af; font-size:12px;">' + msg + '</p></div>';
       }
       return;
     }
-
-    liveSwitchLock = true;
-    clearLiveTimer();
-
-    const video   = document.getElementById("live-video");
+    liveSwitchLock = true; clearLiveTimer();
+    const video = document.getElementById("live-video");
     const loading = document.getElementById("live-loading");
-    const error   = document.getElementById("live-error");
-    const statusEl  = document.getElementById("live-status");
+    const error = document.getElementById("live-error");
+    const statusEl = document.getElementById("live-status");
     if (!video) { liveSwitchLock = false; return; }
-
     destroyLivePlayer();
     if (loading) loading.classList.remove("dhidden");
-    if (error)   error.classList.add("dhidden");
-    if (statusEl)  statusEl.textContent = "正在连接 " + LIVE_SOURCES[idx].name + "...";
-
+    if (error) error.classList.add("dhidden");
+    if (statusEl) statusEl.textContent = "正在连接 " + LIVE_SOURCES[idx].name + "...";
     const src = LIVE_SOURCES[idx];
-
-    liveSourceTimer = setTimeout(function () {
-      console.warn("直播源加载超时: " + src.name);
-      liveSwitchLock = false;
-      tryNextSource();
-    }, getSourceTimeout(idx));
-
+    liveSourceTimer = setTimeout(function () { console.warn("直播源加载超时: " + src.name); liveSwitchLock = false; tryNextSource(); }, getSourceTimeout(idx));
     if (src.type === "auto") {
-      fetch("https://macaumarksix.com/api/live2?_t=" + Date.now())
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-          clearLiveTimer();
-          if (data && data[0] && data[0].videoUrl) {
-            playStream(data[0].videoUrl, detectStreamType(data[0].videoUrl));
-          } else {
-            if (idx + 1 < LIVE_SOURCES.length) {
-              setTimeout(function () { liveSwitchLock = false; connectLiveSource(idx + 1); }, 1000);
-            } else {
-              liveSwitchLock = false;
-              showLiveError();
-            }
-          }
-        })
-        .catch(function () {
-          clearLiveTimer();
-          if (idx + 1 < LIVE_SOURCES.length) {
-            setTimeout(function () { liveSwitchLock = false; connectLiveSource(idx + 1); }, 1000);
-          } else {
-            liveSwitchLock = false;
-            showLiveError();
-          }
-        });
-    } else if (src.url) {
-      playStream(src.url, src.type);
-    } else {
-      clearLiveTimer();
-      liveSwitchLock = false;
-      showLiveError();
-    }
+      fetch("https://macaumarksix.com/api/live2?_t=" + Date.now()).then(function (r) { return r.json(); }).then(function (data) {
+        clearLiveTimer();
+        if (data && data[0] && data[0].videoUrl) playStream(data[0].videoUrl, detectStreamType(data[0].videoUrl));
+        else { if (idx + 1 < LIVE_SOURCES.length) setTimeout(function () { liveSwitchLock = false; connectLiveSource(idx + 1); }, 1000); else { liveSwitchLock = false; showLiveError(); } }
+      }).catch(function () {
+        clearLiveTimer();
+        if (idx + 1 < LIVE_SOURCES.length) setTimeout(function () { liveSwitchLock = false; connectLiveSource(idx + 1); }, 1000);
+        else { liveSwitchLock = false; showLiveError(); }
+      });
+    } else if (src.url) { playStream(src.url, src.type); }
+    else { clearLiveTimer(); liveSwitchLock = false; showLiveError(); }
   }
-
-  function detectStreamType(url) {
-    if (url.indexOf(".m3u8") !== -1) return "hls";
-    if (url.indexOf(".flv") !== -1) return "flv";
-    return "hls";
-  }
-
+  function detectStreamType(url) { if (url.indexOf(".m3u8") !== -1) return "hls"; if (url.indexOf(".flv") !== -1) return "flv"; return "hls"; }
   function playStream(url, type) {
     const video = document.getElementById("live-video");
     const loading = document.getElementById("live-loading");
     if (!video) { liveSwitchLock = false; return; }
-
     if (type === "hls" && window.Hls && Hls.isSupported()) {
       currentHls = new Hls({ enableWorker: true, lowLatencyMode: true });
-      currentHls.loadSource(url);
-      currentHls.attachMedia(video);
-      currentHls.on(Hls.Events.MANIFEST_PARSED, function () {
-        clearLiveTimer();
-        liveSwitchLock = false;
-        if (loading) loading.classList.add("dhidden");
-        video.play().catch(function () {});
-      });
-      currentHls.on(Hls.Events.ERROR, function (_event, data) {
-        if (data.fatal) {
-          clearLiveTimer();
-          liveSwitchLock = false;
-          tryNextSource();
-        }
-      });
+      currentHls.loadSource(url); currentHls.attachMedia(video);
+      currentHls.on(Hls.Events.MANIFEST_PARSED, function () { clearLiveTimer(); liveSwitchLock = false; if (loading) loading.classList.add("dhidden"); video.play().catch(function () {}); });
+      currentHls.on(Hls.Events.ERROR, function (_event, data) { if (data.fatal) { clearLiveTimer(); liveSwitchLock = false; tryNextSource(); } });
     } else if (type === "flv" && window.flvjs && flvjs.isSupported()) {
       currentFlvPlayer = flvjs.createPlayer({ type: "flv", url: url, isLive: true });
-      currentFlvPlayer.attachMediaElement(video);
-      currentFlvPlayer.load();
-      currentFlvPlayer.play();
-      currentFlvPlayer.on(flvjs.Events.LOADING_COMPLETE, function () {
-        clearLiveTimer();
-        liveSwitchLock = false;
-        if (loading) loading.classList.add("dhidden");
-      });
-      currentFlvPlayer.on(flvjs.Events.ERROR, function () {
-        clearLiveTimer();
-        liveSwitchLock = false;
-        tryNextSource();
-      });
-      setTimeout(function () {
-        if (loading) loading.classList.add("dhidden");
-      }, 3000);
+      currentFlvPlayer.attachMediaElement(video); currentFlvPlayer.load(); currentFlvPlayer.play();
+      currentFlvPlayer.on(flvjs.Events.LOADING_COMPLETE, function () { clearLiveTimer(); liveSwitchLock = false; if (loading) loading.classList.add("dhidden"); });
+      currentFlvPlayer.on(flvjs.Events.ERROR, function () { clearLiveTimer(); liveSwitchLock = false; tryNextSource(); });
+      setTimeout(function () { if (loading) loading.classList.add("dhidden"); }, 3000);
     } else {
       video.src = url;
-      video.addEventListener("loadedmetadata", function () {
-        clearLiveTimer();
-        liveSwitchLock = false;
-        if (loading) loading.classList.add("dhidden");
-      });
-      video.addEventListener("error", function () {
-        clearLiveTimer();
-        liveSwitchLock = false;
-        tryNextSource();
-      });
+      video.addEventListener("loadedmetadata", function () { clearLiveTimer(); liveSwitchLock = false; if (loading) loading.classList.add("dhidden"); });
+      video.addEventListener("error", function () { clearLiveTimer(); liveSwitchLock = false; tryNextSource(); });
       video.play().catch(function () {});
     }
   }
-
   function tryNextSource() {
-    clearLiveTimer();
-    destroyLivePlayer();
+    clearLiveTimer(); destroyLivePlayer();
     if (liveSourceIndex + 1 < LIVE_SOURCES.length) {
       liveSourceIndex++;
       const btns = document.querySelectorAll(".dlive-btn");
       btns.forEach(function (b, i) {
-        if (i === liveSourceIndex) {
-          b.classList.add("active");
-          b.style.background = "#00ffea";
-          b.style.color = "#000";
-          b.style.borderColor = "#00ffea";
-        } else {
-          b.classList.remove("active");
-          b.style.background = "#1a1a2a";
-          b.style.color = "#9ca3af";
-          b.style.borderColor = "rgba(0,255,234,0.2)";
-        }
+        if (i === liveSourceIndex) { b.classList.add("active"); b.style.background = "#00ffea"; b.style.color = "#000"; b.style.borderColor = "#00ffea"; }
+        else { b.classList.remove("active"); b.style.background = "#1a1a2a"; b.style.color = "#9ca3af"; b.style.borderColor = "rgba(0,255,234,0.2)"; }
       });
       connectLiveSource(liveSourceIndex);
-    } else {
-      showLiveError();
-    }
+    } else { showLiveError(); }
   }
-
-  function showLiveError() {
-    clearLiveTimer();
-    liveSwitchLock = false;
-    const loading = document.getElementById("live-loading");
-    const error = document.getElementById("live-error");
-    if (loading) loading.classList.add("dhidden");
-    if (error) error.classList.remove("dhidden");
-  }
-
-  function destroyLivePlayer() {
-    clearLiveTimer();
-    liveSwitchLock = false;
-    if (currentHls) { currentHls.destroy(); currentHls = null; }
-    if (currentFlvPlayer) { currentFlvPlayer.destroy(); currentFlvPlayer = null; }
-    const video = document.getElementById("live-video");
-    if (video) { video.pause(); video.removeAttribute("src"); video.load(); }
-  }
+  function showLiveError() { clearLiveTimer(); liveSwitchLock = false; const loading = document.getElementById("live-loading"); const error = document.getElementById("live-error"); if (loading) loading.classList.add("dhidden"); if (error) error.classList.remove("dhidden"); }
+  function destroyLivePlayer() { clearLiveTimer(); liveSwitchLock = false; if (currentHls) { currentHls.destroy(); currentHls = null; } if (currentFlvPlayer) { currentFlvPlayer.destroy(); currentFlvPlayer = null; } const video = document.getElementById("live-video"); if (video) { video.pause(); video.removeAttribute("src"); video.load(); } }
 
   function initAutoRefresh() {
     setInterval(function () {
@@ -1372,16 +900,10 @@ function getFive(num) {
       const totalSec = h * 3600 + m * 60 + s;
       const startSec = 21 * 3600 + 33 * 60 + 30;
       const endSec = 21 * 3600 + 35 * 60 + 0;
-
       if (document.visibilityState === "visible" && totalSec >= startSec && totalSec <= endSec) {
         const nowTs = Date.now();
-        if (!window._lastAutoFetchTime || (nowTs - window._lastAutoFetchTime) >= 5000) {
-          window._lastAutoFetchTime = nowTs;
-          fetchLottery();
-        }
-      } else {
-        window._lastAutoFetchTime = 0;
-      }
+        if (!window._lastAutoFetchTime || (nowTs - window._lastAutoFetchTime) >= 5000) { window._lastAutoFetchTime = nowTs; fetchLottery(); }
+      } else { window._lastAutoFetchTime = 0; }
     }, 1000);
   }
 
@@ -1389,160 +911,59 @@ function getFive(num) {
     const canvas = document.getElementById("particle-canvas");
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    let width, height;
-    let particles = [];
+    let width, height, particles = [], frameId = null, lastTime = 0;
     const MAX_PARTICLES = 60;
-    let frameId = null;
-    let lastTime = 0;
-
-    function resize() {
-      width = window.innerWidth;
-      height = window.innerHeight;
-      canvas.width = width;
-      canvas.height = height;
-    }
-
+    function resize() { width = window.innerWidth; height = window.innerHeight; canvas.width = width; canvas.height = height; }
     function createParticle(yOverride) {
       const speedY = (Math.random() * 50 + 20);
       const speedX = (Math.random() - 0.5) * 24;
       const y = yOverride !== undefined ? yOverride : height + Math.random() * 30;
-      return {
-        x: Math.random() * width,
-        y: y,
-        r: Math.random() * 2.5 + 0.8,
-        speedY: speedY,
-        speedX: speedX,
-        alpha: Math.random() * 0.4 + 0.15,
-        hue: Math.random() * 360,
-        wobble: Math.random() * Math.PI * 2,
-        wobbleSpeed: (Math.random() * 1.0 + 0.3),
-      };
+      return { x: Math.random() * width, y: y, r: Math.random() * 2.5 + 0.8, speedY: speedY, speedX: speedX, alpha: Math.random() * 0.4 + 0.15, hue: Math.random() * 360, wobble: Math.random() * Math.PI * 2, wobbleSpeed: (Math.random() * 1.0 + 0.3) };
     }
-
-    function initDots() {
-      particles = [];
-      for (let i = 0; i < MAX_PARTICLES; i++) {
-        particles.push(createParticle(Math.random() * height));
-      }
-    }
-
+    function initDots() { particles = []; for (let i = 0; i < MAX_PARTICLES; i++) particles.push(createParticle(Math.random() * height)); }
     function animate(timestamp) {
       if (!lastTime) lastTime = timestamp;
       const dt = Math.min((timestamp - lastTime) / 1000, 0.1);
       lastTime = timestamp;
-
       ctx.clearRect(0, 0, width, height);
-
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
-        p.y -= p.speedY * dt;
-        p.wobble += p.wobbleSpeed * dt;
-        p.x += Math.sin(p.wobble) * 0.4 + p.speedX * dt;
-
-        if (p.y < -80 || p.x < -10 || p.x > width + 10) {
-          particles[i] = createParticle();
-        }
-
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = "hsla(" + p.hue + ", 80%, 60%, " + p.alpha + ")";
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.arc(p.x - p.r * 0.35, p.y - p.r * 0.35, p.r * 0.25, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(255,255,255,0.5)";
-        ctx.fill();
+        p.y -= p.speedY * dt; p.wobble += p.wobbleSpeed * dt; p.x += Math.sin(p.wobble) * 0.4 + p.speedX * dt;
+        if (p.y < -80 || p.x < -10 || p.x > width + 10) particles[i] = createParticle();
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fillStyle = "hsla(" + p.hue + ", 80%, 60%, " + p.alpha + ")"; ctx.fill();
+        ctx.beginPath(); ctx.arc(p.x - p.r * 0.35, p.y - p.r * 0.35, p.r * 0.25, 0, Math.PI * 2); ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.fill();
       }
-
       frameId = requestAnimationFrame(animate);
     }
-
-    function start() {
-      if (frameId) return;
-      lastTime = 0;
-      frameId = requestAnimationFrame(animate);
-    }
-
-    function stop() {
-      if (frameId) {
-        cancelAnimationFrame(frameId);
-        frameId = null;
-      }
-    }
-
-    resize();
-    initDots();
-    start();
-
+    function start() { if (frameId) return; lastTime = 0; frameId = requestAnimationFrame(animate); }
+    function stop() { if (frameId) { cancelAnimationFrame(frameId); frameId = null; } }
+    resize(); initDots(); start();
     window.addEventListener("resize", resize);
-
-    document.addEventListener("visibilitychange", function () {
-      if (document.hidden) {
-        stop();
-      } else {
-        start();
-      }
-    });
+    document.addEventListener("visibilitychange", function () { if (document.hidden) stop(); else start(); });
   }
 
   function init() {
     try {
-      cacheDOM();
-      loadState();
-      initWorker();
-      subscribe(onStateChange);
-      initResultDelegation();
-      DrawerSystem.bindGlobalDelegation();
-
-      if (DOM.exampleBtn) {
-        DOM.exampleBtn.addEventListener("click", function () {
-          if (DOM.numbers) DOM.numbers.value = "龙蛇马 12 25 36 8 17 29 41 5 19 33 47";
-          runAnalysis();
-        });
-      }
-      if (DOM.clearBtn) {
-        DOM.clearBtn.addEventListener("click", function () {
-          if (DOM.numbers) DOM.numbers.value = "";
-          runAnalysis();
-          showToast("已清空输入");
-        });
-      }
+      cacheDOM(); loadState(); initWorker(); subscribe(onStateChange); initResultDelegation(); DrawerSystem.bindGlobalDelegation();
+      if (DOM.exampleBtn) DOM.exampleBtn.addEventListener("click", function () { if (DOM.numbers) DOM.numbers.value = "龙蛇马 12 25 36 8 17 29 41 5 19 33 47"; runAnalysis(); });
+      if (DOM.clearBtn) DOM.clearBtn.addEventListener("click", function () { if (DOM.numbers) DOM.numbers.value = ""; runAnalysis(); showToast("已清空输入"); });
       if (DOM.copyResultBtn) DOM.copyResultBtn.addEventListener("click", copyResult);
       if (DOM.numbers) DOM.numbers.addEventListener("input", function () { runAnalysis(); });
       if (DOM.refreshLotteryBtn) DOM.refreshLotteryBtn.addEventListener("click", function () { fetchLottery(); });
-
       document.querySelectorAll(".nav-item").forEach(function (btn) {
         btn.addEventListener("click", function (e) {
           e.stopPropagation();
           const drawer = btn.dataset.drawer;
-          if (drawer === "selectnone") {
-            clearAllFilters();
-            const killInput = document.getElementById("kill-input");
-            if (killInput) killInput.value = "";
-            DrawerSystem.close();
-            showToast("已清空所有筛选");
-          } else {
-            DrawerSystem.open(drawer);
-          }
+          if (drawer === "selectnone") { clearAllFilters(); const killInput = document.getElementById("kill-input"); if (killInput) killInput.value = ""; DrawerSystem.close(); showToast("已清空所有筛选"); }
+          else { DrawerSystem.open(drawer); }
         });
       });
       if (DOM.drawer_close) DOM.drawer_close.addEventListener("click", function () { DrawerSystem.close(); });
       if (DOM.drawer_overlay) DOM.drawer_overlay.addEventListener("click", function () { DrawerSystem.close(); });
-
-      fetchLottery();
-      runAnalysis();
-      initAutoRefresh();
-      initParticles();
-
-      window.addEventListener("beforeunload", function () {
-        terminateWorker();
-      });
-
-      console.log("%c✅ 神码再现 v3.6.0 永不过期版已加载", "color:#00ffea;font-weight:bold");
-    } catch (e) {
-      console.error("初始化失败:", e);
-      alert("页面初始化出错，请刷新重试。错误: " + e.message);
-    }
+      fetchLottery(); runAnalysis(); initAutoRefresh(); initParticles();
+      window.addEventListener("beforeunload", function () { terminateWorker(); });
+      console.log("%c✅ 神码再现 v3.6.2 永不过期版已加载", "color:#00ffea;font-weight:bold");
+    } catch (e) { console.error("初始化失败:", e); alert("页面初始化出错，请刷新重试。错误: " + e.message); }
   }
 
   document.addEventListener("DOMContentLoaded", init);

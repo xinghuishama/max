@@ -1,17 +1,10 @@
-// ======================== worker.js — 独立 Worker 分析引擎 v3.6.2 ========================
-// 新增：内置自动跨年生肖算法，确保 Worker 离线时数据一致
+// ======================== data.js v3.6.2 ========================
 (function () {
   "use strict";
 
   const MAX_NUMBERS = 5000;
 
-  // ======================== 自动跨年生肖算法（Worker 内置 Fallback） ========================
-
-(function () {
-  "use strict";
-
-  const MAX_NUMBERS = 5000;
-
+  // 自动跨年生肖算法
   const ZODIAC_SEQUENCE = ["龙","蛇","马","羊","猴","鸡","狗","猪","鼠","牛","虎","兔"];
   const BASE_YEAR = 2024;
 
@@ -75,5 +68,8 @@
     numProps[n] = { head, tail, color, odd, five, sumOdd, duan, halfOddEven, shengXiao, sum };
   }
 
-  window.APP_DATA = { MAX_NUMBERS, SHENGXIAO, CATEGORIES, DUAN, numProps, ZODIAC_SEQUENCE, BASE_YEAR, generateShengxiaoMap };
+  window.APP_DATA = {
+    MAX_NUMBERS, SHENGXIAO, CATEGORIES, DUAN, numProps,
+    ZODIAC_SEQUENCE, BASE_YEAR, generateShengxiaoMap
+  };
 })();
