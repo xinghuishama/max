@@ -1,11 +1,4 @@
-// ======================== worker.js — 独立 Worker 分析引擎 v3.6.2 ========================
-// 新增：内置自动跨年生肖算法，确保 Worker 离线时数据一致
-(function () {
-  "use strict";
-
-  const MAX_NUMBERS = 5000;
-
-  // ======================== 自动跨年生肖算法（Worker 内置 Fallback） =================
+// ======================== worker.js v3.6.2 ========================
 (function () {
   "use strict";
 
@@ -29,7 +22,6 @@
     return map;
   }
 
-  // Worker 内也能访问 new Date()，自动跨年
   const FALLBACK_YEAR = new Date().getFullYear();
   let SHENGXIAO = generateShengxiaoMap(FALLBACK_YEAR);
 
@@ -150,7 +142,7 @@
       for (let i = 0; i < cachedFuncs.length; i++) {
         if (cachedFuncs[i](n)) {
           hit++;
-          if (hit > 6) break;  // ← 上限 6
+          if (hit > 6) break;
         }
       }
       hits[n] = hit;
@@ -183,8 +175,11 @@
         if (adj > 0) unique++;
       }
       self.postMessage({
-        adjustedCount: Array.from(adjustedCount), adjustedTotal, unique,
-        hitCounts: Array.from(hitCounts), rawCount: Array.from(rawCount)
+        adjustedCount: Array.from(adjustedCount),
+        adjustedTotal: adjustedTotal,
+        unique: unique,
+        hitCounts: Array.from(hitCounts),
+        rawCount: Array.from(rawCount)
       });
     } catch (err) {
       self.postMessage({ error: err.message || "Worker 失败" });
