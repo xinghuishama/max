@@ -1,4 +1,4 @@
-// ======================== worker.js v3.6.2 ========================
+// ======================== worker.js v3.6.3 ========================
 (function () {
   "use strict";
 
@@ -22,8 +22,25 @@
     return map;
   }
 
+  // ==================== 五行自动跨年 ====================
+  const WUXING_BASE_SEQ = [
+    '金','金','土','土','木','木','火','火','金','金',
+    '水','水','木','木','火','火','土','土','水','水',
+    '木','木','金','金','土','土','水','水','火','火'
+  ];
+  function getWuxingMap(year) {
+    const offset = year - 2023;
+    const map = new Map();
+    for (let n = 1; n <= 49; n++) {
+      const wx = WUXING_BASE_SEQ[((n - 1) % 30 - offset + 30) % 30];
+      map.set(n, wx);
+    }
+    return map;
+  }
+
   const FALLBACK_YEAR = new Date().getFullYear();
   let SHENGXIAO = generateShengxiaoMap(FALLBACK_YEAR);
+  let currentWuxingYear = FALLBACK_YEAR;
 
   const CATEGORIES = {
     金:[4,5,12,13,26,27,34,35,42,43],木:[8,9,16,17,24,25,38,39,46,47],
@@ -41,7 +58,9 @@
 
   let numProps = new Array(50);
   function buildNumProps(year) {
-    SHENGXIAO = generateShengxiaoMap(year || FALLBACK_YEAR);
+    currentWuxingYear = year || FALLBACK_YEAR;
+    SHENGXIAO = generateShengxiaoMap(currentWuxingYear);
+    const wuxingMap = getWuxingMap(currentWuxingYear);
     const sxEntries = Object.entries(SHENGXIAO);
     const duanEntries = Object.entries(DUAN);
     for (let n = 1; n <= 49; n++) {
@@ -49,7 +68,7 @@
       const tail = n % 10;
       const odd = n % 2 === 1 ? "单" : "双";
       const color = CATEGORIES.红波.includes(n) ? "red" : (CATEGORIES.蓝波.includes(n) ? "blue" : "green");
-      const five = CATEGORIES.金.includes(n) ? "金" : (CATEGORIES.木.includes(n) ? "木" : (CATEGORIES.水.includes(n) ? "水" : (CATEGORIES.火.includes(n) ? "火" : "土")));
+      const five = wuxingMap.get(n);
       const sum = head + tail;
       const sumOdd = sum % 2 === 1 ? "合数单" : "合数双";
       let duan = "";
@@ -112,7 +131,7 @@
       return function (n) { return numProps[n] && numProps[n].color === colorMap[c] && numProps[n].odd === oe; };
     }
     if (["金","木","水","火","土"].includes(cond)) {
-      return function (n) { return numProps[n] && numProps[n].five === cond; };
+      return function (n) { return getWuxingMap(currentWuxingYear).get(n) === cond; };
     }
     if (["合数单","合数双","大单","大双","小单","小双"].includes(cond)) {
       if (cond === "合数单") return function (n) { return numProps[n] && numProps[n].sumOdd === "合数单"; };

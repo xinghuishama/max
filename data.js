@@ -1,4 +1,4 @@
-// ======================== data.js v3.6.2 ========================
+// ======================== data.js v3.6.3 ========================
 (function () {
   "use strict";
 
@@ -22,6 +22,27 @@
       map[ZODIAC_SEQUENCE[i]] = nums;
     }
     return map;
+  }
+
+  // ==================== 五行自动跨年 ====================
+  const WUXING_BASE_SEQ = [
+    '金','金','土','土','木','木','火','火','金','金',
+    '水','水','木','木','火','火','土','土','水','水',
+    '木','木','金','金','土','土','水','水','火','火'
+  ];
+  function generateWuxing(year) {
+    const offset = year - 2023;
+    const result = { '金':[], '木':[], '水':[], '火':[], '土':[] };
+    for (let n = 1; n <= 49; n++) {
+      const wx = WUXING_BASE_SEQ[((n - 1) % 30 - offset + 30) % 30];
+      result[wx].push(n);
+    }
+    return result;
+  }
+  function getNumberWuxing(num, year) {
+    const idx = (num - 1) % 30;
+    const offset = year - 2023;
+    return WUXING_BASE_SEQ[(idx - offset + 30) % 30];
   }
 
   const CURRENT_YEAR = new Date().getFullYear();
@@ -53,7 +74,7 @@
     const tail = n % 10;
     const odd = n % 2 === 1 ? "单" : "双";
     const color = CATEGORIES.红波.includes(n) ? "red" : (CATEGORIES.蓝波.includes(n) ? "blue" : "green");
-    const five = CATEGORIES.金.includes(n) ? "金" : (CATEGORIES.木.includes(n) ? "木" : (CATEGORIES.水.includes(n) ? "水" : (CATEGORIES.火.includes(n) ? "火" : "土")));
+    const five = getNumberWuxing(n, CURRENT_YEAR);
     const sum = head + tail;
     const sumOdd = sum % 2 === 1 ? "合数单" : "合数双";
     let duan = "";
@@ -70,6 +91,7 @@
 
   window.APP_DATA = {
     MAX_NUMBERS, SHENGXIAO, CATEGORIES, DUAN, numProps,
-    ZODIAC_SEQUENCE, BASE_YEAR, generateShengxiaoMap
+    ZODIAC_SEQUENCE, BASE_YEAR, generateShengxiaoMap,
+    generateWuxing, getNumberWuxing, WUXING_BASE_SEQ
   };
 })();

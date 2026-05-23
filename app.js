@@ -9,23 +9,37 @@
 
   const RED_SET = new Set([1,2,7,8,12,13,18,19,23,24,29,30,34,35,40,45,46]);
   const BLUE_SET = new Set([3,4,9,10,14,15,20,25,26,31,36,37,41,42,47,48]);
-  const FIVE_MAP = {
-    1:"水",2:"火",3:"火",4:"金",5:"金",6:"土",7:"土",8:"木",9:"木",10:"火",
-    11:"火",12:"金",13:"金",14:"水",15:"水",16:"木",17:"木",18:"火",19:"火",
-    20:"土",21:"土",22:"水",23:"水",24:"木",25:"木",26:"金",27:"金",28:"土",
-    29:"土",30:"水",31:"水",32:"火",33:"火",34:"金",35:"金",36:"土",37:"土",
-    38:"木",39:"木",40:"火",41:"火",42:"金",43:"金",44:"水",45:"水",46:"木",
-    47:"木",48:"火",49:"火"
-  };
+
+  // ==================== 五行自动跨年 ====================
+  const WUXING_BASE_SEQ = [
+    '金','金','土','土','木','木','火','火','金','金',
+    '水','水','木','木','火','火','土','土','水','水',
+    '木','木','金','金','土','土','水','水','火','火'
+  ];
+  function getNumberWuxing(num, year) {
+    const idx = (num - 1) % 30;
+    const offset = year - 2023;
+    return WUXING_BASE_SEQ[(idx - offset + 30) % 30];
+  }
+  function generateWuxingTable(year) {
+    const result = { '金':[], '木':[], '水':[], '火':[], '土':[] };
+    for (let n = 1; n <= 49; n++) {
+      const wx = getNumberWuxing(n, year);
+      result[wx].push(n);
+    }
+    return result;
+  }
+  const CURRENT_YEAR = new Date().getFullYear();
+
   function getBallColor(n) {
     if (numProps && numProps[n] && numProps[n].color) return numProps[n].color;
     if (RED_SET.has(n)) return "red";
     if (BLUE_SET.has(n)) return "blue";
     return "green";
   }
-  function getFive(num) {
-    if (numProps && numProps[num] && numProps[num].five) return numProps[num].five;
-    return FIVE_MAP[num] || "?";
+  function getFive(num, year) {
+    year = year || CURRENT_YEAR;
+    return getNumberWuxing(num, year);
   }
 
   const API_CONFIG = {
@@ -170,7 +184,7 @@
       return function (n) { return numProps[n] && numProps[n].color === colorMap[c] && numProps[n].odd === oe; };
     }
     if (["金","木","水","火","土"].includes(cond)) {
-      return function (n) { return numProps[n] && numProps[n].five === cond; };
+      return function (n) { return getNumberWuxing(n, CURRENT_YEAR) === cond; };
     }
     if (["合数单","合数双","大单","大双","小单","小双"].includes(cond)) {
       if (cond === "合数单") return function (n) { return numProps[n] && numProps[n].sumOdd === "合数单"; };
@@ -502,11 +516,11 @@
     for (let i = 0; i < 6 && i < codes.length; i++) {
       const num = parseInt(codes[i], 10);
       const colorClass = waves[i] === "red" ? "result-ball-red" : (waves[i] === "green" ? "result-ball-green" : "result-ball-blue");
-      const wx = (num >= 1 && num <= 49) ? getFive(num) : "?";
+      const wx = (num >= 1 && num <= 49) ? getFive(num, CURRENT_YEAR) : "?";
       const wxCls = wxClassMap[wx] || "";
       const div = document.createElement("div");
       div.className = "result-ball-item";
-      div.innerHTML = '<div class="result-ball ' + colorClass + '" style="animation-delay: ' + (i * 150) + 'ms">' + escapeHtml(codes[i].padStart(2, "0")) + '<div class="result-ball-meta">' + escapeHtml(zodiacs[i] || "") + '/<span class="' + wxCls + '">' + wx + "</span></div></div>";
+      div.innerHTML = '<div class="result-ball ' + colorClass + '" style="animation-delay: ' + (i * 150) + 'ms">' + escapeHtml(codes[i].padStart(2, "0")) + '<div class="result-ball-meta">' + escapeHtml(zodiacs[i] || "") + '/<<span class="' + wxCls + '">' + wx + "</span></div></div>";
       container.appendChild(div);
     }
     if (codes.length >= 7) {
@@ -516,11 +530,11 @@
       container.appendChild(plus);
       const num = parseInt(codes[6], 10);
       const colorClass = waves[6] === "red" ? "result-ball-red" : (waves[6] === "green" ? "result-ball-green" : "result-ball-blue");
-      const wx = (num >= 1 && num <= 49) ? getFive(num) : "?";
+      const wx = (num >= 1 && num <= 49) ? getFive(num, CURRENT_YEAR) : "?";
       const wxCls = wxClassMap[wx] || "";
       const div = document.createElement("div");
       div.className = "result-ball-item";
-      div.innerHTML = '<div class="result-ball ' + colorClass + '" style="animation-delay: ' + (6 * 150) + 'ms">' + escapeHtml(codes[6].padStart(2, "0")) + '<div class="result-ball-meta">' + escapeHtml(zodiacs[6] || "") + '/<span class="' + wxCls + '">' + wx + "</span></div></div>";
+      div.innerHTML = '<div class="result-ball ' + colorClass + '" style="animation-delay: ' + (6 * 150) + 'ms">' + escapeHtml(codes[6].padStart(2, "0")) + '<div class="result-ball-meta">' + escapeHtml(zodiacs[6] || "") + '/<<span class="' + wxCls + '">' + wx + "</span></div></div>";
       container.appendChild(div);
     }
     void container.offsetHeight;
@@ -529,14 +543,15 @@
   }
 
   let currentHistoryData = [], currentHistorySorted = [], currentHistoryPage = 1, historyCache = {}, historyYearLoaded = null;
-  function renderBallsHTML(codes, waves, zodiacs) {
+  function renderBallsHTML(codes, waves, zodiacs, year) {
+    year = year || CURRENT_YEAR;
     let html = "";
     codes.forEach(function (code, i) {
       const wave = waves[i];
       const zodiac = zodiacs[i];
       const cc = wave === "blue" || wave === "蓝" ? "history-ball-blue" : wave === "green" || wave === "绿" ? "history-ball-green" : "history-ball-red";
       const num = parseInt(code, 10);
-      const five = (num >= 1 && num <= 49) ? getFive(num) : "";
+      const five = (num >= 1 && num <= 49) ? getFive(num, year) : "";
       html += '<div class="history-ball-card ' + cc + '"><div class="history-ball-number">' + escapeHtml(code) + '</div><div class="history-ball-tag">' + escapeHtml(zodiac || "") + "/" + escapeHtml(five) + "</div></div>";
       if (i === 5) html += '<span class="history-plus-sign">+</span>';
     });
@@ -576,7 +591,8 @@
           const codes = item.openCode.split(",").map(function (c) { return escapeHtml(c.trim()); });
           const waves = (item.wave || "").split(",").map(function (w) { return escapeHtml(w.trim()); });
           const zodiacs = (item.zodiac || "").split(",").map(function (z) { return escapeHtml(z.trim()); });
-          ballsHtml = renderBallsHTML(codes, waves, zodiacs);
+          const recordYear = historyYearLoaded || CURRENT_YEAR;
+          ballsHtml = renderBallsHTML(codes, waves, zodiacs, recordYear);
         } else { ballsHtml = '<div style="display:flex; justify-content:center; align-items:center; padding:24px 0; color:#fbbf24; font-size:14px; font-weight:500;">待开奖</div>'; }
         const div = document.createElement("div");
         div.className = "history-item";
@@ -644,7 +660,11 @@
         }).join("");
       },
       wuxing: function () {
-        const wx = { "金":"04 05 12 13 26 27 34 35 42 43", "木":"08 09 16 17 24 25 38 39 46 47", "水":"01 14 15 22 23 30 31 44 45", "火":"02 03 10 11 18 19 32 33 40 41 48 49", "土":"06 07 20 21 28 29 36 37" };
+        const table = generateWuxingTable(CURRENT_YEAR);
+        const wx = {};
+        for (const [k, v] of Object.entries(table)) {
+          wx[k] = v.map(function(n){ return String(n).padStart(2,'0'); }).join(' ');
+        }
         const sel = state.selectedFilters.wuxing;
         return '<div class="dspace-y">' + Object.entries(wx).map(function (entry) {
           const k = entry[0], v = entry[1];
