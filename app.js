@@ -520,7 +520,7 @@
       const wxCls = wxClassMap[wx] || "";
       const div = document.createElement("div");
       div.className = "result-ball-item";
-      div.innerHTML = '<div class="result-ball ' + colorClass + '" style="animation-delay: ' + (i * 150) + 'ms">' + escapeHtml(codes[i].padStart(2, "0")) + '<div class="result-ball-meta">' + escapeHtml(zodiacs[i] || "") + '/<<span class="' + wxCls + '">' + wx + "</span></div></div>";
+      div.innerHTML = '<div class="result-ball ' + colorClass + '" style="animation-delay: ' + (i * 150) + 'ms">' + escapeHtml(codes[i].padStart(2, "0")) + '<div class="result-ball-meta">' + escapeHtml(zodiacs[i] || "") + '/<span class="' + wxCls + '">' + wx + "</span></div></div>";
       container.appendChild(div);
     }
     if (codes.length >= 7) {
@@ -534,7 +534,7 @@
       const wxCls = wxClassMap[wx] || "";
       const div = document.createElement("div");
       div.className = "result-ball-item";
-      div.innerHTML = '<div class="result-ball ' + colorClass + '" style="animation-delay: ' + (6 * 150) + 'ms">' + escapeHtml(codes[6].padStart(2, "0")) + '<div class="result-ball-meta">' + escapeHtml(zodiacs[6] || "") + '/<<span class="' + wxCls + '">' + wx + "</span></div></div>";
+      div.innerHTML = '<div class="result-ball ' + colorClass + '" style="animation-delay: ' + (6 * 150) + 'ms">' + escapeHtml(codes[6].padStart(2, "0")) + '<div class="result-ball-meta">' + escapeHtml(zodiacs[6] || "") + '/<span class="' + wxCls + '">' + wx + "</span></div></div>";
       container.appendChild(div);
     }
     void container.offsetHeight;
