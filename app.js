@@ -480,79 +480,53 @@ function launchUniqueFlyEffect(targetNum, colorClass) {
 //独苗特效这里开始
   let currentUniqueElement = null, lastUniqueNum = null;
  function launchUniqueFlyEffect(targetNum, colorClass) {
-  document.querySelectorAll(".flying-unique-ball, .phoenix-particle, .phoenix-wing").forEach(function (el) { el.remove(); });
+  document.querySelectorAll(".flying-unique-ball, .blackhole, .distortion").forEach(function (el) { el.remove(); });
   const targetEl = DOM.result.querySelector('[data-num="' + targetNum + '"]');
   if (!targetEl) return;
   const targetRect = targetEl.getBoundingClientRect();
   const endX = targetRect.left + targetRect.width / 2;
   const endY = targetRect.top + targetRect.height / 2;
-  const startX = window.innerWidth / 2;
-  const startY = window.innerHeight + 100;
-  const hue = colorClass === "ball-red" ? 0 : colorClass === "ball-green" ? 120 : 220;
+  const centerX = window.innerWidth / 2;
+  const centerY = window.innerHeight / 2;
+  const color = colorClass === "ball-red" ? "#ff3366" : colorClass === "ball-green" ? "#33cc66" : "#3366ff";
   
-  // 火焰尾迹粒子
-  const particles = [];
-  for (let i = 0; i < 30; i++) {
-    const p = document.createElement("div");
-    p.className = "phoenix-particle";
-    p.style.cssText = `position:fixed;width:${4+Math.random()*6}px;height:${4+Math.random()*6}px;background:hsl(${hue + Math.random()*40},100%,60%);border-radius:50%;pointer-events:none;z-index:9998;box-shadow:0 0 10px hsl(${hue},100%,50%);`;
-    document.body.appendChild(p);
-    particles.push(p);
-  }
+  // 黑洞
+  const blackhole = document.createElement("div");
+  blackhole.className = "blackhole";
+  blackhole.style.cssText = `position:fixed;left:${centerX}px;top:${centerY}px;width:0;height:0;background:radial-gradient(circle,#000 30%,${color} 70%,transparent 100%);border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:9999;box-shadow:0 0 50px ${color};`;
+  document.body.appendChild(blackhole);
   
-  // 主球
+  blackhole.animate([
+    { width: '0px', height: '0px', opacity: 0 },
+    { width: '150px', height: '150px', opacity: 1, offset: 0.3 },
+    { width: '100px', height: '100px', opacity: 0.9, offset: 0.7 },
+    { width: '0px', height: '0px', opacity: 0 }
+  ], { duration: 2000, easing: 'ease-in-out' }).onfinish = () => blackhole.remove();
+  
+  // 球体：从目标位置被吸入黑洞，再喷出
   const ball = document.createElement("div");
   ball.className = "flying-unique-ball " + colorClass;
   ball.textContent = String(targetNum).padStart(2, "0");
-  ball.style.cssText = `position:fixed;left:${startX}px;top:${startY}px;transform:translate(-50%,-50%);z-index:10000;filter:drop-shadow(0 0 20px hsl(${hue},100%,50%));`;
+  ball.style.cssText = `position:fixed;left:${endX}px;top:${endY}px;transform:translate(-50%,-50%) scale(0);z-index:10000;`;
   document.body.appendChild(ball);
   
-  const duration = 1500;
-  const startTime = performance.now();
-  
-  function animate(now) {
-    const progress = Math.min((now - startTime) / duration, 1);
-    const ease = 1 - Math.pow(1 - progress, 3);
-    const currentX = startX + (endX - startX) * ease;
-    const currentY = startY + (endY - startY) * ease;
-    const height = window.innerHeight + 100;
-    const flyProgress = 1 - (currentY - endY) / (startY - endY);
-    
-    ball.style.left = currentX + 'px';
-    ball.style.top = currentY + 'px';
-    ball.style.transform = `translate(-50%,-50%) scale(${1 + Math.sin(progress*Math.PI)*0.5})`;
-    
-    // 尾迹粒子
-    particles.forEach((p, i) => {
-      const offset = i / particles.length;
-      const pProgress = Math.max(0, Math.min(1, (progress - offset * 0.3) / 0.7));
-      const px = currentX + (Math.random()-0.5)*30*pProgress;
-      const py = currentY + 50*pProgress + (Math.random()-0.5)*20;
-      const scale = 1 - pProgress;
-      p.style.left = px + 'px';
-      p.style.top = py + 'px';
-      p.style.transform = `scale(${scale})`;
-      p.style.opacity = scale;
-    });
-    
-    if (progress < 1) requestAnimationFrame(animate);
-    else {
-      // 炸裂
+  // 阶段1：吸入黑洞
+  ball.animate([
+    { left: endX + 'px', top: endY + 'px', transform: 'translate(-50%,-50%) scale(1)' },
+    { left: centerX + 'px', top: centerY + 'px', transform: 'translate(-50%,-50%) scale(0.1) rotate(720deg)', offset: 0.4 }
+  ], { duration: 800, easing: 'ease-in' }).onfinish = function() {
+    // 阶段2：从黑洞喷出
+    ball.animate([
+      { left: centerX + 'px', top: centerY + 'px', transform: 'translate(-50%,-50%) scale(0.1)' },
+      { left: centerX + 'px', top: centerY + 'px', transform: 'translate(-50%,-50%) scale(1.5)', offset: 0.1 },
+      { left: endX + 'px', top: endY + 'px', transform: 'translate(-50%,-50%) scale(1) rotate(-360deg)' }
+    ], { duration: 1000, easing: 'cubic-bezier(0.175, 0.885, 0.32, 1.275)' }).onfinish = function() {
       ball.remove();
-      particles.forEach(p => {
-        const angle = Math.random() * Math.PI * 2;
-        const dist = 50 + Math.random() * 100;
-        p.animate([
-          { transform: 'scale(1)', opacity: 1 },
-          { transform: `translate(${Math.cos(angle)*dist}px,${Math.sin(angle)*dist}px) scale(0)`, opacity: 0 }
-        ], { duration: 500, easing: 'ease-out' }).onfinish = () => p.remove();
-      });
       targetEl.classList.add("landing-shock", "flash-unique");
       setTimeout(() => targetEl.classList.remove("landing-shock"), 400);
-      showToast("🔥 凤凰涅槃：" + String(targetNum).padStart(2, "0") + " 号");
-    }
-  }
-  requestAnimationFrame(animate);
+      showToast("🌌 黑洞吞噬：" + String(targetNum).padStart(2, "0") + " 号");
+    };
+  };
 }
 
 //独苗飞行特效结束
