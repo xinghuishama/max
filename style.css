@@ -705,3 +705,26 @@ body {
   z-index: 0;
   pointer-events: none;
 }
+/* 赛博朋克2077特效 */
+.glitch-layer {
+  animation: glitch-flicker 0.15s ease-in-out 3;
+}
+@keyframes glitch-flicker {
+  0%, 100% { opacity: 0.05; transform: translate(0); }
+  25% { opacity: 0.1; transform: translate(-2px, 2px); }
+  50% { opacity: 0.03; transform: translate(2px, -1px); }
+  75% { opacity: 0.08; transform: translate(-1px, -2px); }
+}
+
+.scan-line {
+  will-change: top;
+}
+
+.compile-char {
+  will-change: top, opacity;
+}
+
+.flying-unique-ball {
+  font-family: 'Courier New', monospace;
+  letter-spacing: 2px;
+}
