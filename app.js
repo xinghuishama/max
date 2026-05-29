@@ -356,8 +356,6 @@
     requestAnimationFrame(animate);
   }
 
-  function renderResult(adjustedCount, adjustedTotal, unique, hitCounts, rawCount) {
-
 //独苗飞行特效结束
   function renderResult(adjustedCount, adjustedTotal, unique, hitCounts, rawCount) {
     try {
