@@ -705,26 +705,32 @@ body {
   z-index: 0;
   pointer-events: none;
 }
-/* 赛博朋克2077特效 */
-.glitch-layer {
-  animation: glitch-flicker 0.15s ease-in-out 3;
-}
-@keyframes glitch-flicker {
-  0%, 100% { opacity: 0.05; transform: translate(0); }
-  25% { opacity: 0.1; transform: translate(-2px, 2px); }
-  50% { opacity: 0.03; transform: translate(2px, -1px); }
-  75% { opacity: 0.08; transform: translate(-1px, -2px); }
+/* 量子跃迁特效 */
+.quantum-ring {
+  will-change: width, height, opacity;
 }
 
-.scan-line {
-  will-change: top;
+.quantum-particle {
+  will-change: transform, opacity;
 }
 
-.compile-char {
-  will-change: top, opacity;
+.landing-shock {
+  animation: quantum-land 0.5s ease-out;
 }
 
-.flying-unique-ball {
-  font-family: 'Courier New', monospace;
-  letter-spacing: 2px;
+@keyframes quantum-land {
+  0% { transform: scale(1); filter: brightness(1); }
+  25% { transform: scale(1.4); filter: brightness(2); }
+  50% { transform: scale(0.9); filter: brightness(1.5); }
+  75% { transform: scale(1.1); filter: brightness(1.2); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+
+.flash-unique {
+  animation: flash-pulse 1s ease-in-out 3;
+}
+
+@keyframes flash-pulse {
+  0%, 100% { box-shadow: 0 0 5px currentColor; }
+  50% { box-shadow: 0 0 25px currentColor, 0 0 50px currentColor; }
 }

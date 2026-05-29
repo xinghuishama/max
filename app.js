@@ -253,89 +253,112 @@
     } catch (err) { console.error("onWorkerMessage error:", err); }
   }
 
+  
+//独苗特效这里开始
   let currentUniqueElement = null, lastUniqueNum = null;
-//黑客帝国特效这里开始
-   function launchUniqueFlyEffect(targetNum, colorClass) {
-    document.querySelectorAll(".flying-unique-ball, .glitch-layer, .digital-rain, .scan-line, .compile-char").forEach(function (el) { el.remove(); });
-    const targetEl = DOM.result.querySelector('[data-num="' + targetNum + '"]');
+  function launchUniqueFlyEffect(targetNum, colorClass) {
+    document.querySelectorAll(".flying-unique-ball, .quantum-ring, .quantum-particle").forEach(function (el) { el.remove(); });
+    var targetEl = DOM.result.querySelector('[data-num="' + targetNum + '"]');
     if (!targetEl) return;
-    const targetRect = targetEl.getBoundingClientRect();
-    const endX = targetRect.left + targetRect.width / 2;
-    const endY = targetRect.top + targetRect.height / 2;
-    const color = colorClass === "ball-red" ? "#ff3366" : colorClass === "ball-green" ? "#33cc66" : "#3366ff";
-    const cybColor = colorClass === "ball-red" ? "#ff0055" : colorClass === "ball-green" ? "#00ff88" : "#00ccff";
+    var targetRect = targetEl.getBoundingClientRect();
+    var endX = targetRect.left + targetRect.width / 2;
+    var endY = targetRect.top + targetRect.height / 2;
+    var startX = window.innerWidth / 2;
+    var startY = window.innerHeight / 2;
+    var glowColor = colorClass === "ball-red" ? "#ff3366" : colorClass === "ball-green" ? "#33cc66" : "#3366ff";
     
-    const glitch = document.createElement("div");
-    glitch.className = "glitch-layer";
-    glitch.style.cssText = "position:fixed;left:0;top:0;width:100%;height:100%;background:rgba(0,255,234,0.05);pointer-events:none;z-index:9997;mix-blend-mode:overlay;";
-    document.body.appendChild(glitch);
-    
-    const scanline = document.createElement("div");
-    scanline.className = "scan-line";
-    scanline.style.cssText = "position:fixed;left:0;top:0;width:100%;height:4px;background:linear-gradient(to bottom,transparent," + cybColor + ",transparent);pointer-events:none;z-index:9998;box-shadow:0 0 20px " + cybColor + ";";
-    document.body.appendChild(scanline);
-    
-    scanline.animate([
-      { top: '0%' },
-      { top: '100%' }
-    ], { duration: 800, easing: 'ease-in-out' }).onfinish = function() { scanline.remove(); };
-    
-    const rainContainer = document.createElement("div");
-    rainContainer.style.cssText = "position:fixed;left:" + (endX-50) + "px;top:" + (endY-50) + "px;width:100px;height:100px;overflow:hidden;pointer-events:none;z-index:9996;";
-    document.body.appendChild(rainContainer);
-    
-    for (let i = 0; i < 20; i++) {
-      const drop = document.createElement("div");
-      drop.className = "compile-char";
-      drop.textContent = Math.random() > 0.5 ? '1' : '0';
-      drop.style.cssText = "position:absolute;left:" + Math.random()*100 + "px;top:" + (-20-Math.random()*50) + "px;color:" + cybColor + ";font-size:10px;font-family:monospace;opacity:0.6;";
-      rainContainer.appendChild(drop);
-      drop.animate([
-        { top: '-20px', opacity: 0.6 },
-        { top: '120px', opacity: 0 }
-      ], { duration: 500 + Math.random()*500, delay: Math.random()*300 }).onfinish = function() { drop.remove(); };
+    // 量子环
+    var i;
+    for (i = 0; i < 3; i++) {
+      (function(idx) {
+        var ring = document.createElement("div");
+        ring.className = "quantum-ring";
+        ring.style.cssText = "position:fixed;left:" + startX + "px;top:" + startY + "px;width:0;height:0;border:2px solid " + glowColor + ";border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:9999;opacity:0.8;";
+        document.body.appendChild(ring);
+        var anim = ring.animate([
+          { width: '0px', height: '0px', opacity: 0.8 },
+          { width: '300px', height: '300px', opacity: 0 }
+        ], { duration: 600 + idx * 200, easing: 'ease-out' });
+        anim.onfinish = function() { ring.remove(); };
+      })(i);
     }
     
-    const ball = document.createElement("div");
+    // 分解粒子
+    var particles = [];
+    for (i = 0; i < 20; i++) {
+      var p = document.createElement("div");
+      p.className = "quantum-particle";
+      p.style.cssText = "position:fixed;left:" + startX + "px;top:" + startY + "px;width:6px;height:6px;background:" + glowColor + ";border-radius:50%;pointer-events:none;z-index:9998;box-shadow:0 0 10px " + glowColor + ";";
+      document.body.appendChild(p);
+      particles.push(p);
+    }
+    
+    // 主球体
+    var ball = document.createElement("div");
     ball.className = "flying-unique-ball " + colorClass;
     ball.textContent = String(targetNum).padStart(2, "0");
-    ball.style.cssText = "position:fixed;left:" + endX + "px;top:" + endY + "px;transform:translate(-50%,-50%) scale(0);z-index:10000;background:rgba(0,0,0,0.8);border:2px solid " + cybColor + ";box-shadow:0 0 30px " + cybColor + ", inset 0 0 20px " + cybColor + "40;";
+    ball.style.cssText = "position:fixed;left:" + startX + "px;top:" + startY + "px;transform:translate(-50%,-50%) scale(0);z-index:10000;";
     document.body.appendChild(ball);
     
-    const chars = "0123456789ABCDEF<>[]{}";
-    let frame = 0;
-    const totalFrames = 30;
+    var startTime = performance.now();
+    var duration = 1200;
     
-    function compile() {
-      frame++;
-      if (frame < totalFrames * 0.7) {
-        ball.textContent = chars[Math.floor(Math.random()*chars.length)] + chars[Math.floor(Math.random()*chars.length)];
-        ball.style.transform = "translate(-50%,-50%) scale(" + (frame/totalFrames) + ") skewX(" + ((Math.random()-0.5)*20) + "deg)";
-        ball.style.opacity = frame / (totalFrames * 0.5);
-        requestAnimationFrame(compile);
+    function animate(now) {
+      var progress = Math.min((now - startTime) / duration, 1);
+      var ease = progress < 0.5 ? 4 * progress * progress * progress : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+      
+      // 粒子扩散
+      particles.forEach(function(p, idx) {
+        var angle = (idx / particles.length) * Math.PI * 2;
+        var dist = 100 * ease;
+        var px = startX + Math.cos(angle) * dist + (Math.random() - 0.5) * 20;
+        var py = startY + Math.sin(angle) * dist + (Math.random() - 0.5) * 20;
+        var scale = 1 - ease;
+        p.style.left = px + "px";
+        p.style.top = py + "px";
+        p.style.transform = "translate(-50%,-50%) scale(" + scale + ")";
+        p.style.opacity = scale;
+      });
+      
+      // 主球体
+      if (progress < 0.3) {
+        // 分解阶段：缩小消失
+        var decompScale = 1 - progress / 0.3;
+        ball.style.transform = "translate(-50%,-50%) scale(" + decompScale + ")";
+        ball.style.opacity = decompScale;
+      } else if (progress < 0.7) {
+        // 量子态：隐藏
+        ball.style.transform = "translate(-50%,-50%) scale(0)";
+        ball.style.opacity = 0;
       } else {
-        ball.textContent = String(targetNum).padStart(2, "0");
-        ball.style.transform = "translate(-50%,-50%) scale(1) skewX(0deg)";
-        ball.style.opacity = 1;
+        // 重组阶段：从目标位置出现
+        var recompProgress = (progress - 0.7) / 0.3;
+        var recompEase = 1 - Math.pow(1 - recompProgress, 3);
+        ball.style.left = startX + (endX - startX) * recompEase + "px";
+        ball.style.top = startY + (endY - startY) * recompEase + "px";
+        ball.style.transform = "translate(-50%,-50%) scale(" + recompEase + ") rotate(" + (recompEase * 360) + "deg)";
+        ball.style.opacity = recompEase;
+      }
+      
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        // 清理
+        particles.forEach(function(p) { p.remove(); });
+        ball.remove();
         
-        ball.animate([
-          { boxShadow: "0 0 30px " + cybColor + ", inset 0 0 20px " + cybColor + "40" },
-          { boxShadow: "0 0 60px " + cybColor + ", inset 0 0 40px " + cybColor + "80", offset: 0.5 },
-          { boxShadow: "0 0 30px " + cybColor + ", inset 0 0 20px " + cybColor + "40" }
-        ], { duration: 400 }).onfinish = function() {
-          ball.remove();
-          glitch.remove();
-          rainContainer.remove();
-          targetEl.classList.add("landing-shock", "flash-unique");
-          setTimeout(function() { targetEl.classList.remove("landing-shock"); }, 400);
-          showToast("💾 编译完成：" + String(targetNum).padStart(2, "0") + " 号");
-        };
+        // 着陆冲击
+        targetEl.classList.add("landing-shock", "flash-unique");
+        setTimeout(function() { targetEl.classList.remove("landing-shock"); }, 400);
+        showToast("🎯 量子跃迁：" + String(targetNum).padStart(2, "0") + " 号");
       }
     }
-    requestAnimationFrame(compile);
+    requestAnimationFrame(animate);
   }
 
-//黑客帝国特效结束
+  function renderResult(adjustedCount, adjustedTotal, unique, hitCounts, rawCount) {
+
+//独苗飞行特效结束
   function renderResult(adjustedCount, adjustedTotal, unique, hitCounts, rawCount) {
     try {
       const container = DOM.result;
