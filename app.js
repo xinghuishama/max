@@ -250,111 +250,310 @@
       if (d.error) { console.error("Worker returned error:", d.error); runAnalysisMainThread(); return; }
       lastRawCount = d.rawCount;
       renderResult(d.adjustedCount, d.adjustedTotal, d.unique, d.hitCounts, d.rawCount);
-    } catch (err) { console.error("onWorkerMessage error:", err); }
+    } catch (err) { console.error("onWorkerMessage error:", err); function launchUniqueFlyEffect(targetNum, colorClass) {
+  document.querySelectorAll(".flying-unique-ball, .phoenix-particle, .phoenix-wing").forEach(function (el) { el.remove(); });
+  const targetEl = DOM.result.querySelector('[data-num="' + targetNum + '"]');
+  if (!targetEl) return;
+  const targetRect = targetEl.getBoundingClientRect();
+  const endX = targetRect.left + targetRect.width / 2;
+  const endY = targetRect.top + targetRect.height / 2;
+  const startX = window.innerWidth / 2;
+  const startY = window.innerHeight + 100;
+  const hue = colorClass === "ball-red" ? 0 : colorClass === "ball-green" ? 120 : 220;
+  
+  // 火焰尾迹粒子
+  const particles = [];
+  for (let i = 0; i < 30; i++) {
+    const p = document.createElement("div");
+    p.className = "phoenix-particle";
+    p.style.cssText = `position:fixed;width:${4+Math.random()*6}px;height:${4+Math.random()*6}px;background:hsl(${hue + Math.random()*40},100%,60%);border-radius:50%;pointer-events:none;z-index:9998;box-shadow:0 0 10px hsl(${hue},100%,50%);`;
+    document.body.appendChild(p);
+    particles.push(p);
   }
+  
+  // 主球
+  const ball = document.createElement("div");
+  ball.className = "flying-unique-ball " + colorClass;
+  ball.textContent = String(targetNum).padStart(2, "0");
+  ball.style.cssText = `position:fixed;left:${startX}px;top:${startY}px;transform:translate(-50%,-50%);z-index:10000;filter:drop-shadow(0 0 20px hsl(${hue},100%,50%));`;
+  document.body.appendChild(ball);
+  
+  const duration = 1500;
+  const startTime = performance.now();
+  
+  function animate(now) {
+    const progress = Math.min((now - startTime) / duration, 1);
+    const ease = 1 - Math.pow(1 - progress, 3);
+    const currentX = startX + (endX - startX) * ease;
+    const currentY = startY + (endY - startY) * ease;
+    const height = window.innerHeight + 100;
+    const flyProgress = 1 - (currentY - endY) / (startY - endY);
+    
+    ball.style.left = currentX + 'px';
+    ball.style.top = currentY + 'px';
+    ball.style.transform = `translate(-50%,-50%) scale(${1 + Math.sin(progress*Math.PI)*0.5})`;
+    
+    // 尾迹粒子
+    particles.forEach((p, i) => {
+      const offset = i / particles.length;
+      const pProgress = Math.max(0, Math.min(1, (progress - offset * 0.3) / 0.7));
+      const px = currentX + (Math.random()-0.5)*30*pProgress;
+      const py = currentY + 50*pProgress + (Math.random()-0.5)*20;
+      const scale = 1 - pProgress;
+      p.style.left = px + 'px';
+      p.style.top = py + 'px';
+      p.style.transform = `scale(${scale})`;
+      p.style.opacity = scale;
+    });
+    
+    if (progress < 1) requestAnimationFrame(animate);
+    else {
+      // 炸裂
+      ball.remove();
+      particles.forEach(p => {
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 50 + Math.random() * 100;
+        p.animate([
+          { transform: 'scale(1)', opacity: 1 },
+          { transform: `translate(${Math.cos(angle)*dist}px,${Math.sin(angle)*dist}px) scale(0)`, opacity: 0 }
+        ], { duration: 500, easing: 'ease-out' }).onfinish = () => p.remove();
+      });
+      targetEl.classList.add("landing-shock", "flash-unique");
+      setTimeout(() => targetEl.classList.remove("landing-shock"), 400);
+      showToast("🔥 凤凰涅槃：" + String(targetNum).padStart(2, "0") + " 号");
+    }
+  }
+  requestAnimationFrame(animate);
+}
+function launchUniqueFlyEffect(targetNum, colorClass) {
+  document.querySelectorAll(".flying-unique-ball, .phoenix-particle, .phoenix-wing").forEach(function (el) { el.remove(); });
+  const targetEl = DOM.result.querySelector('[data-num="' + targetNum + '"]');
+  if (!targetEl) return;
+  const targetRect = targetEl.getBoundingClientRect();
+  const endX = targetRect.left + targetRect.width / 2;
+  const endY = targetRect.top + targetRect.height / 2;
+  const startX = window.innerWidth / 2;
+  const startY = window.innerHeight + 100;
+  const hue = colorClass === "ball-red" ? 0 : colorClass === "ball-green" ? 120 : 220;
+  
+  // 火焰尾迹粒子
+  const particles = [];
+  for (let i = 0; i < 30; i++) {
+    const p = document.createElement("div");
+    p.className = "phoenix-particle";
+    p.style.cssText = `position:fixed;width:${4+Math.random()*6}px;height:${4+Math.random()*6}px;background:hsl(${hue + Math.random()*40},100%,60%);border-radius:50%;pointer-events:none;z-index:9998;box-shadow:0 0 10px hsl(${hue},100%,50%);`;
+    document.body.appendChild(p);
+    particles.push(p);
+  }
+  
+  // 主球
+  const ball = document.createElement("div");
+  ball.className = "flying-unique-ball " + colorClass;
+  ball.textContent = String(targetNum).padStart(2, "0");
+  ball.style.cssText = `position:fixed;left:${startX}px;top:${startY}px;transform:translate(-50%,-50%);z-index:10000;filter:drop-shadow(0 0 20px hsl(${hue},100%,50%));`;
+  document.body.appendChild(ball);
+  
+  const duration = 1500;
+  const startTime = performance.now();
+  
+  function animate(now) {
+    const progress = Math.min((now - startTime) / duration, 1);
+    const ease = 1 - Math.pow(1 - progress, 3);
+    const currentX = startX + (endX - startX) * ease;
+    const currentY = startY + (endY - startY) * ease;
+    const height = window.innerHeight + 100;
+    const flyProgress = 1 - (currentY - endY) / (startY - endY);
+    
+    ball.style.left = currentX + 'px';
+    ball.style.top = currentY + 'px';
+    ball.style.transform = `translate(-50%,-50%) scale(${1 + Math.sin(progress*Math.PI)*0.5})`;
+    
+    // 尾迹粒子
+    particles.forEach((p, i) => {
+      const offset = i / particles.length;
+      const pProgress = Math.max(0, Math.min(1, (progress - offset * 0.3) / 0.7));
+      const px = currentX + (Math.random()-0.5)*30*pProgress;
+      const py = currentY + 50*pProgress + (Math.random()-0.5)*20;
+      const scale = 1 - pProgress;
+      p.style.left = px + 'px';
+      p.style.top = py + 'px';
+      p.style.transform = `scale(${scale})`;
+      p.style.opacity = scale;
+    });
+    
+    if (progress < 1) requestAnimationFrame(animate);
+    else {
+      // 炸裂
+      ball.remove();
+      particles.forEach(p => {
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 50 + Math.random() * 100;
+        p.animate([
+          { transform: 'scale(1)', opacity: 1 },
+          { transform: `translate(${Math.cos(angle)*dist}px,${Math.sin(angle)*dist}px) scale(0)`, opacity: 0 }
+        ], { duration: 500, easing: 'ease-out' }).onfinish = () => p.remove();
+      });
+      targetEl.classList.add("landing-shock", "flash-unique");
+      setTimeout(() => targetEl.classList.remove("landing-shock"), 400);
+      showToast("🔥 凤凰涅槃：" + String(targetNum).padStart(2, "0") + " 号");
+    }
+  }
+  requestAnimationFrame(animate);
+}
+function launchUniqueFlyEffect(targetNum, colorClass) {
+  document.querySelectorAll(".flying-unique-ball, .phoenix-particle, .phoenix-wing").forEach(function (el) { el.remove(); });
+  const targetEl = DOM.result.querySelector('[data-num="' + targetNum + '"]');
+  if (!targetEl) return;
+  const targetRect = targetEl.getBoundingClientRect();
+  const endX = targetRect.left + targetRect.width / 2;
+  const endY = targetRect.top + targetRect.height / 2;
+  const startX = window.innerWidth / 2;
+  const startY = window.innerHeight + 100;
+  const hue = colorClass === "ball-red" ? 0 : colorClass === "ball-green" ? 120 : 220;
+  
+  // 火焰尾迹粒子
+  const particles = [];
+  for (let i = 0; i < 30; i++) {
+    const p = document.createElement("div");
+    p.className = "phoenix-particle";
+    p.style.cssText = `position:fixed;width:${4+Math.random()*6}px;height:${4+Math.random()*6}px;background:hsl(${hue + Math.random()*40},100%,60%);border-radius:50%;pointer-events:none;z-index:9998;box-shadow:0 0 10px hsl(${hue},100%,50%);`;
+    document.body.appendChild(p);
+    particles.push(p);
+  }
+  
+  // 主球
+  const ball = document.createElement("div");
+  ball.className = "flying-unique-ball " + colorClass;
+  ball.textContent = String(targetNum).padStart(2, "0");
+  ball.style.cssText = `position:fixed;left:${startX}px;top:${startY}px;transform:translate(-50%,-50%);z-index:10000;filter:drop-shadow(0 0 20px hsl(${hue},100%,50%));`;
+  document.body.appendChild(ball);
+  
+  const duration = 1500;
+  const startTime = performance.now();
+  
+  function animate(now) {
+    const progress = Math.min((now - startTime) / duration, 1);
+    const ease = 1 - Math.pow(1 - progress, 3);
+    const currentX = startX + (endX - startX) * ease;
+    const currentY = startY + (endY - startY) * ease;
+    const height = window.innerHeight + 100;
+    const flyProgress = 1 - (currentY - endY) / (startY - endY);
+    
+    ball.style.left = currentX + 'px';
+    ball.style.top = currentY + 'px';
+    ball.style.transform = `translate(-50%,-50%) scale(${1 + Math.sin(progress*Math.PI)*0.5})`;
+    
+    // 尾迹粒子
+    particles.forEach((p, i) => {
+      const offset = i / particles.length;
+      const pProgress = Math.max(0, Math.min(1, (progress - offset * 0.3) / 0.7));
+      const px = currentX + (Math.random()-0.5)*30*pProgress;
+      const py = currentY + 50*pProgress + (Math.random()-0.5)*20;
+      const scale = 1 - pProgress;
+      p.style.left = px + 'px';
+      p.style.top = py + 'px';
+      p.style.transform = `scale(${scale})`;
+      p.style.opacity = scale;
+    });
+    
+    if (progress < 1) requestAnimationFrame(animate);
+    else {
+      // 炸裂
+      ball.remove();
+      particles.forEach(p => {
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 50 + Math.random() * 100;
+        p.animate([
+          { transform: 'scale(1)', opacity: 1 },
+          { transform: `translate(${Math.cos(angle)*dist}px,${Math.sin(angle)*dist}px) scale(0)`, opacity: 0 }
+        ], { duration: 500, easing: 'ease-out' }).onfinish = () => p.remove();
+      });
+      targetEl.classList.add("landing-shock", "flash-unique");
+      setTimeout(() => targetEl.classList.remove("landing-shock"), 400);
+      showToast("🔥 凤凰涅槃：" + String(targetNum).padStart(2, "0") + " 号");
+    }
+  }
+  requestAnimationFrame(animate);
+}
 
   
 //独苗特效这里开始
   let currentUniqueElement = null, lastUniqueNum = null;
-  function launchUniqueFlyEffect(targetNum, colorClass) {
-    document.querySelectorAll(".flying-unique-ball, .quantum-ring, .quantum-particle").forEach(function (el) { el.remove(); });
-    var targetEl = DOM.result.querySelector('[data-num="' + targetNum + '"]');
-    if (!targetEl) return;
-    var targetRect = targetEl.getBoundingClientRect();
-    var endX = targetRect.left + targetRect.width / 2;
-    var endY = targetRect.top + targetRect.height / 2;
-    var startX = window.innerWidth / 2;
-    var startY = window.innerHeight / 2;
-    var glowColor = colorClass === "ball-red" ? "#ff3366" : colorClass === "ball-green" ? "#33cc66" : "#3366ff";
-    
-    // 量子环
-    var i;
-    for (i = 0; i < 3; i++) {
-      (function(idx) {
-        var ring = document.createElement("div");
-        ring.className = "quantum-ring";
-        ring.style.cssText = "position:fixed;left:" + startX + "px;top:" + startY + "px;width:0;height:0;border:2px solid " + glowColor + ";border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:9999;opacity:0.8;";
-        document.body.appendChild(ring);
-        var anim = ring.animate([
-          { width: '0px', height: '0px', opacity: 0.8 },
-          { width: '300px', height: '300px', opacity: 0 }
-        ], { duration: 600 + idx * 200, easing: 'ease-out' });
-        anim.onfinish = function() { ring.remove(); };
-      })(i);
-    }
-    
-    // 分解粒子
-    var particles = [];
-    for (i = 0; i < 20; i++) {
-      var p = document.createElement("div");
-      p.className = "quantum-particle";
-      p.style.cssText = "position:fixed;left:" + startX + "px;top:" + startY + "px;width:6px;height:6px;background:" + glowColor + ";border-radius:50%;pointer-events:none;z-index:9998;box-shadow:0 0 10px " + glowColor + ";";
-      document.body.appendChild(p);
-      particles.push(p);
-    }
-    
-    // 主球体
-    var ball = document.createElement("div");
-    ball.className = "flying-unique-ball " + colorClass;
-    ball.textContent = String(targetNum).padStart(2, "0");
-    ball.style.cssText = "position:fixed;left:" + startX + "px;top:" + startY + "px;transform:translate(-50%,-50%) scale(0);z-index:10000;";
-    document.body.appendChild(ball);
-    
-    var startTime = performance.now();
-    var duration = 1200;
-    
-    function animate(now) {
-      var progress = Math.min((now - startTime) / duration, 1);
-      var ease = progress < 0.5 ? 4 * progress * progress * progress : 1 - Math.pow(-2 * progress + 2, 3) / 2;
-      
-      // 粒子扩散
-      particles.forEach(function(p, idx) {
-        var angle = (idx / particles.length) * Math.PI * 2;
-        var dist = 100 * ease;
-        var px = startX + Math.cos(angle) * dist + (Math.random() - 0.5) * 20;
-        var py = startY + Math.sin(angle) * dist + (Math.random() - 0.5) * 20;
-        var scale = 1 - ease;
-        p.style.left = px + "px";
-        p.style.top = py + "px";
-        p.style.transform = "translate(-50%,-50%) scale(" + scale + ")";
-        p.style.opacity = scale;
-      });
-      
-      // 主球体
-      if (progress < 0.3) {
-        // 分解阶段：缩小消失
-        var decompScale = 1 - progress / 0.3;
-        ball.style.transform = "translate(-50%,-50%) scale(" + decompScale + ")";
-        ball.style.opacity = decompScale;
-      } else if (progress < 0.7) {
-        // 量子态：隐藏
-        ball.style.transform = "translate(-50%,-50%) scale(0)";
-        ball.style.opacity = 0;
-      } else {
-        // 重组阶段：从目标位置出现
-        var recompProgress = (progress - 0.7) / 0.3;
-        var recompEase = 1 - Math.pow(1 - recompProgress, 3);
-        ball.style.left = startX + (endX - startX) * recompEase + "px";
-        ball.style.top = startY + (endY - startY) * recompEase + "px";
-        ball.style.transform = "translate(-50%,-50%) scale(" + recompEase + ") rotate(" + (recompEase * 360) + "deg)";
-        ball.style.opacity = recompEase;
-      }
-      
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      } else {
-        // 清理
-        particles.forEach(function(p) { p.remove(); });
-        ball.remove();
-        
-        // 着陆冲击
-        targetEl.classList.add("landing-shock", "flash-unique");
-        setTimeout(function() { targetEl.classList.remove("landing-shock"); }, 400);
-        showToast("🎯 量子跃迁：" + String(targetNum).padStart(2, "0") + " 号");
-      }
-    }
-    requestAnimationFrame(animate);
+ function launchUniqueFlyEffect(targetNum, colorClass) {
+  document.querySelectorAll(".flying-unique-ball, .phoenix-particle, .phoenix-wing").forEach(function (el) { el.remove(); });
+  const targetEl = DOM.result.querySelector('[data-num="' + targetNum + '"]');
+  if (!targetEl) return;
+  const targetRect = targetEl.getBoundingClientRect();
+  const endX = targetRect.left + targetRect.width / 2;
+  const endY = targetRect.top + targetRect.height / 2;
+  const startX = window.innerWidth / 2;
+  const startY = window.innerHeight + 100;
+  const hue = colorClass === "ball-red" ? 0 : colorClass === "ball-green" ? 120 : 220;
+  
+  // 火焰尾迹粒子
+  const particles = [];
+  for (let i = 0; i < 30; i++) {
+    const p = document.createElement("div");
+    p.className = "phoenix-particle";
+    p.style.cssText = `position:fixed;width:${4+Math.random()*6}px;height:${4+Math.random()*6}px;background:hsl(${hue + Math.random()*40},100%,60%);border-radius:50%;pointer-events:none;z-index:9998;box-shadow:0 0 10px hsl(${hue},100%,50%);`;
+    document.body.appendChild(p);
+    particles.push(p);
   }
+  
+  // 主球
+  const ball = document.createElement("div");
+  ball.className = "flying-unique-ball " + colorClass;
+  ball.textContent = String(targetNum).padStart(2, "0");
+  ball.style.cssText = `position:fixed;left:${startX}px;top:${startY}px;transform:translate(-50%,-50%);z-index:10000;filter:drop-shadow(0 0 20px hsl(${hue},100%,50%));`;
+  document.body.appendChild(ball);
+  
+  const duration = 1500;
+  const startTime = performance.now();
+  
+  function animate(now) {
+    const progress = Math.min((now - startTime) / duration, 1);
+    const ease = 1 - Math.pow(1 - progress, 3);
+    const currentX = startX + (endX - startX) * ease;
+    const currentY = startY + (endY - startY) * ease;
+    const height = window.innerHeight + 100;
+    const flyProgress = 1 - (currentY - endY) / (startY - endY);
+    
+    ball.style.left = currentX + 'px';
+    ball.style.top = currentY + 'px';
+    ball.style.transform = `translate(-50%,-50%) scale(${1 + Math.sin(progress*Math.PI)*0.5})`;
+    
+    // 尾迹粒子
+    particles.forEach((p, i) => {
+      const offset = i / particles.length;
+      const pProgress = Math.max(0, Math.min(1, (progress - offset * 0.3) / 0.7));
+      const px = currentX + (Math.random()-0.5)*30*pProgress;
+      const py = currentY + 50*pProgress + (Math.random()-0.5)*20;
+      const scale = 1 - pProgress;
+      p.style.left = px + 'px';
+      p.style.top = py + 'px';
+      p.style.transform = `scale(${scale})`;
+      p.style.opacity = scale;
+    });
+    
+    if (progress < 1) requestAnimationFrame(animate);
+    else {
+      // 炸裂
+      ball.remove();
+      particles.forEach(p => {
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 50 + Math.random() * 100;
+        p.animate([
+          { transform: 'scale(1)', opacity: 1 },
+          { transform: `translate(${Math.cos(angle)*dist}px,${Math.sin(angle)*dist}px) scale(0)`, opacity: 0 }
+        ], { duration: 500, easing: 'ease-out' }).onfinish = () => p.remove();
+      });
+      targetEl.classList.add("landing-shock", "flash-unique");
+      setTimeout(() => targetEl.classList.remove("landing-shock"), 400);
+      showToast("🔥 凤凰涅槃：" + String(targetNum).padStart(2, "0") + " 号");
+    }
+  }
+  requestAnimationFrame(animate);
+}
 
 //独苗飞行特效结束
   function renderResult(adjustedCount, adjustedTotal, unique, hitCounts, rawCount) {

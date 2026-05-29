@@ -705,24 +705,33 @@ body {
   z-index: 0;
   pointer-events: none;
 }
-/* 量子跃迁特效 */
-.quantum-ring {
+/* 黑洞吞噬特效 */
+.blackhole {
   will-change: width, height, opacity;
 }
 
-.quantum-particle {
+.distortion {
+  will-change: transform, opacity;
+}
+
+.crack {
+  will-change: width, opacity;
+  border-radius: 1px;
+}
+
+.spark {
   will-change: transform, opacity;
 }
 
 .landing-shock {
-  animation: quantum-land 0.5s ease-out;
+  animation: blackhole-shock 0.5s ease-out;
 }
 
-@keyframes quantum-land {
+@keyframes blackhole-shock {
   0% { transform: scale(1); filter: brightness(1); }
-  25% { transform: scale(1.4); filter: brightness(2); }
-  50% { transform: scale(0.9); filter: brightness(1.5); }
-  75% { transform: scale(1.1); filter: brightness(1.2); }
+  25% { transform: scale(1.3); filter: brightness(2); }
+  50% { transform: scale(0.9); }
+  75% { transform: scale(1.1); }
   100% { transform: scale(1); filter: brightness(1); }
 }
 
@@ -733,4 +742,4 @@ body {
 @keyframes flash-pulse {
   0%, 100% { box-shadow: 0 0 5px currentColor; }
   50% { box-shadow: 0 0 25px currentColor, 0 0 50px currentColor; }
-}
+
