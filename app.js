@@ -335,8 +335,6 @@
     requestAnimationFrame(compile);
   }
 
-  function renderResult(adjustedCount, adjustedTotal, unique, hitCounts, rawCount) {
-
 //黑客帝国特效结束
   function renderResult(adjustedCount, adjustedTotal, unique, hitCounts, rawCount) {
     try {
