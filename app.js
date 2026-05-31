@@ -712,10 +712,40 @@
           `<label><input type="checkbox" class="filter-checkbox hidden" value="生肖${sx}" data-drawer="shengxiao" ${sel.includes("生肖"+sx)?"checked":""}><span class="filter-label dbtn">${sx}</span></label>`
         ).join("") + "</div>";
       },
-      haomatou: () => { /* 原实现保留 */ return ""; },
-      weishu: () => { /* 原实现保留 */ return ""; },
-      shuduan: () => { /* 原实现保留 */ return ""; },
-      bose: () => { /* 原实现保留 */ return ""; },
+      haomatou: function () {
+        const heads = [["0头单","1头单","2头单","3头单","4头单"],["0头双","1头双","2头双","3头双","4头双"]];
+        const sel = state.selectedFilters.haomatou;
+        return heads.map(function (row) {
+          return '<div class="dflex">' + row.map(function (h) {
+            return '<label class="dflex-1"><input type="checkbox" class="filter-checkbox hidden" value="' + h + '" data-drawer="haomatou" ' + (sel.includes(h) ? "checked" : "") + '><span class="filter-label dbtn dbtn-sm">' + h + "</span></label>";
+          }).join("") + "</div>";
+        }).join("");
+      },
+      weishu: function () {
+        const tails = [["0尾","1尾","2尾","3尾","4尾"],["5尾","6尾","7尾","8尾","9尾"]];
+        const sel = state.selectedFilters.weishu;
+        return tails.map(function (row) {
+          return '<div class="dflex">' + row.map(function (t) {
+            return '<label class="dflex-1"><input type="checkbox" class="filter-checkbox hidden" value="' + t + '" data-drawer="weishu" ' + (sel.includes(t) ? "checked" : "") + '><span class="filter-label dbtn dbtn-sm">' + t + "</span></label>";
+          }).join("") + "</div>";
+        }).join("");
+      },
+      shuduan: function () {
+        const duans = ["1段","2段","3段","4段","5段","6段","7段"];
+        const sel = state.selectedFilters.shuduan;
+        return '<div class="dflex-wrap">' + duans.map(function (d) {
+          return '<label><input type="checkbox" class="filter-checkbox hidden" value="' + d + '" data-drawer="shuduan" ' + (sel.includes(d) ? "checked" : "") + '><span class="filter-label dbtn dbtn-md">' + d + "</span></label>";
+        }).join("") + "</div>";
+      },
+      bose: function () {
+        const items = [["红波单","蓝波单","绿波单"],["红波双","蓝波双","绿波双"]];
+        const sel = state.selectedFilters.bose;
+        return items.map(function (row) {
+          return '<div class="dflex">' + row.map(function (item) {
+            return '<label class="dflex-1"><input type="checkbox" class="filter-checkbox hidden" value="' + item + '" data-drawer="bose" ' + (sel.includes(item) ? "checked" : "") + '><span class="filter-label dbtn dbtn-sm">' + item.replace("波", "") + "</span></label>";
+          }).join("") + "</div>";
+        }).join("");
+      },
       wuxing: () => {
         const table = generateWuxingTable(new Date().getFullYear());
         const wx = {};
@@ -725,10 +755,44 @@
           `<div class="wuxing-row"><label class="ditems-center" style="gap:8px;min-width:0;flex-shrink:0;"><input type="checkbox" class="filter-checkbox hidden" value="${k}" data-drawer="wuxing" ${sel.includes(k)?"checked":""}><span class="filter-label dbtn dbtn-fixed wuxing-btn-fixed">${k}</span></label><span class="wuxing-nums">${v}</span></div>`
         ).join("") + "</div>";
       },
-      bandanshuang: () => { /* 原实现保留 */ return ""; },
-      heshu: () => { /* 原实现保留 */ return ""; },
-      history: () => { /* 原实现保留 */ return ""; }
-      // 注意：已删除 live 模板
+      bandanshuang: function () {
+        const items = [["合数单","小单","大单"],["合数双","小双","大双"]];
+        const sel = state.selectedFilters.bandanshuang;
+        return items.map(function (row) {
+          return '<div class="dflex">' + row.map(function (item) {
+            return '<label class="dflex-1"><input type="checkbox" class="filter-checkbox hidden" value="' + item + '" data-drawer="bandanshuang" ' + (sel.includes(item) ? "checked" : "") + '><span class="filter-label dbtn dbtn-sm">' + item + "</span></label>";
+          }).join("") + "</div>";
+        }).join("");
+      },
+      heshu: function () {
+        const hes = Array.from({ length: 13 }, function (_, i) { return (i + 1) + "合"; });
+        const sel = state.selectedFilters.heshu;
+        return '<div class="dgrid-4">' + hes.map(function (h) {
+          return '<label><input type="checkbox" class="filter-checkbox hidden" value="' + h + '" data-drawer="heshu" ' + (sel.includes(h) ? "checked" : "") + '><span class="filter-label dbtn dbtn-sm">' + h + "</span></label>";
+        }).join("") + "</div>";
+      },
+       history: function () {
+        let opts = "";
+        const currentYear = new Date().getFullYear();
+        for (let y = currentYear; y >= 2020; y--) opts += '<option value="' + y + '">' + y + "年</option>";
+        return [
+          '<div>',
+            '<select id="historyYear" class="dselect"><option value="">选择年份</option>' + opts + "</select>",
+            '<div id="historyLoading" class="dhidden dtext-center dpy-4">',
+              '<svg class="animate-spin" style="width:24px; height:24px; margin:0 auto; color:#00ffea;" fill="none" viewBox="0 0 24 24">',
+                '<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>',
+                '<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>',
+              "</svg>",
+            "</div>",
+            '<div id="historyContent" class="dmt-3 hide-scrollbar"></div>',
+            '<div id="historyPagination" class="dflex-between dmt-6 dpx-1 dhidden">',
+              '<button id="history-prev" class="dpage-btn">← 上1页</button>',
+              '<div class="dtext-sm" style="text-align:center;">第 <span id="historyPageNum" style="font-weight:bold; color:#00ffea;">1</span> 页 / <span id="historyTotalPages" class="dtext-gray">1</span> 页</div>',
+              '<button id="history-next" class="dpage-btn">下1页 →</button>',
+            "</div>",
+          "</div>"
+        ].join("");
+      }
     },
     open(type) {
       if (this.current === type) { this.close(); return; }
