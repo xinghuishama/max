@@ -524,45 +524,6 @@
     });
   }
 
-  // ---------- 防抖执行分析 ----------
-  let debounceTimer = null;
-  function runAnalysis() {
-    initWorker();
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
-      try {
-        const input = DOM.numbers ? DOM.numbers.value : "";
-        const parsed = parseInputCount(input);
-        if (DOM.charCount) DOM.charCount.textContent = parsed.nums.length;
-        if (DOM.numberWarn) {
-          if (parsed.truncated) {
-            DOM.numberWarn.classList.remove("hidden");
-            if (!window._truncToastShown) { showToast("⚠️ 输入号码超过" + MAX_NUMBERS + "个，已截断"); window._truncToastShown = true; setTimeout(() => window._truncToastShown = false, 2000); }
-          } else { DOM.numberWarn.classList.add("hidden"); }
-        }
-        if (workerReady && analysisWorker) {
-          analysisWorker.postMessage({ input, killNums: state.killNums, filters: getFilterSet(), numProps, year: new Date().getFullYear() });
-        } else {
-          const res = computeAnalysisMainThread(input, state.killNums, getFilterSet());
-          lastRawCount = res.rawCount;
-          renderResult(res.adjustedCount, res.adjustedTotal, res.unique, res.hitCounts, res.rawCount);
-        }
-      } catch (err) { console.error("runAnalysis error:", err); }
-    }, 200);
-  }
-  function runAnalysisMainThread() {
-    try {
-      const input = DOM.numbers ? DOM.numbers.value : "";
-      const res = computeAnalysisMainThread(input, state.killNums, getFilterSet());
-      lastRawCount = res.rawCount;
-      renderResult(res.adjustedCount, res.adjustedTotal, res.unique, res.hitCounts, res.rawCount);
-    } catch (err) {
-      console.error("runAnalysisMainThread error:", err);
-      if (DOM.result) DOM.result.innerHTML = '<div class="text-center py-8 text-red-400">分析引擎异常，请刷新重试</div>';
-    }
-  }
-  function onStateChange() { runAnalysis(); saveState(); }
-
 
   // ---------- 开奖数据获取与渲染 ----------
   let isCurrentDrawComplete = false, lastLotteryPeriod = "", isFetchingLottery = false;
