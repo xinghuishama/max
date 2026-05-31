@@ -9,11 +9,8 @@
   const numProps = DATA.numProps || [];
   const RED_SET = new Set(DATA.CATEGORIES ? DATA.CATEGORIES.红波 : []);
   const BLUE_SET = new Set(DATA.CATEGORIES ? DATA.CATEGORIES.蓝波 : []);
-  // 五行相关方法直接使用 DATA 提供（无需自己实现）
   const getFive = DATA.getNumberWuxing || function () { return "?"; };
   const generateWuxingTable = DATA.generateWuxing || function () { return { 金:[],木:[],水:[],火:[],土:[] }; };
-
-  // 当前年份（用于五行计算）
   const CURRENT_YEAR = new Date().getFullYear();
 
   // ---------- 常量配置 ----------
@@ -54,13 +51,13 @@
   function toggleFilter(category, value, checked) {
     if (!state.selectedFilters[category]) return;
     const set = new Set(state.selectedFilters[category]);
-    checked ? set.add(value) : set.delete(value);
+    if (checked) set.add(value); else set.delete(value);
     state.selectedFilters[category] = Array.from(set);
     notify();
   }
   function clearAllFilters() {
     state.killNums = [];
-    for (let k in state.selectedFilters) state.selectedFilters[k] = [];
+    Object.keys(state.selectedFilters).forEach(k => { state.selectedFilters[k] = []; });
     notify();
   }
   function getFilterSet() { return Object.values(state.selectedFilters).flat(); }
@@ -68,7 +65,7 @@
   function saveState() {
     try {
       localStorage.setItem(LS_KEY, JSON.stringify({ killNums: state.killNums, selectedFilters: state.selectedFilters, _t: Date.now() }));
-    } catch(e) {}
+    } catch (e) {}
   }
   function loadState() {
     try {
@@ -79,11 +76,12 @@
       if (parsed._t && (Date.now() - parsed._t > 7 * 86400000)) { localStorage.removeItem(LS_KEY); return; }
       if (Array.isArray(parsed.killNums)) state.killNums = parsed.killNums.filter(n => Number.isInteger(n) && n >= 1 && n <= 49);
       if (parsed.selectedFilters && typeof parsed.selectedFilters === "object") {
-        for (let k in state.selectedFilters) {
-          if (Array.isArray(parsed.selectedFilters[k])) state.selectedFilters[k] = [...parsed.selectedFilters[k]];
-        }
+        Object.keys(state.selectedFilters).forEach(k => {
+          const val = parsed.selectedFilters[k];
+          if (Array.isArray(val)) state.selectedFilters[k] = Array.from(val);
+        });
       }
-    } catch(e) { console.warn("loadState failed", e); }
+    } catch (e) { console.warn("loadState failed", e); }
   }
 
   // ---------- 工具函数 ----------
@@ -110,7 +108,7 @@
   function parseInputCount(input) {
     if (!input || !input.trim()) return { nums: [], truncated: false };
     let cleaned = input.replace(/《.*?》/g, " ").replace(/[^0-9鼠牛虎兔龙蛇马羊猴鸡狗猪]/g, " ").replace(/([鼠牛虎兔龙蛇马羊猴鸡狗猪])/g, " $1 ");
-    const tokens = cleaned.split(" ").filter(t => t.length);
+    const tokens = cleaned.split(" ").filter(t => t.length > 0);
     if (!tokens.length) return { nums: [], truncated: false };
     let results = [];
     for (let token of tokens) {
@@ -161,7 +159,7 @@
       return n => numProps[n] && numProps[n].color === colorMap[c] && numProps[n].odd === oe;
     }
     if (["金","木","水","火","土"].includes(cond)) {
-      return n => getFive(n, CURRENT_YEAR) === cond;  // 传入年份
+      return n => getFive(n, CURRENT_YEAR) === cond;
     }
     if (["合数单","合数双","大单","大双","小单","小双"].includes(cond)) {
       if (cond === "合数单") return n => numProps[n] && numProps[n].sumOdd === "合数单";
@@ -175,18 +173,18 @@
     return () => false;
   }
 
-  // ---------- 主线程分析 (降级) ----------
+  // ---------- 主线程分析 (保留) ----------
   function computeAnalysisMainThread(input, killNums, filters) {
     const nums = parseInputCount(input).nums;
     const rawCount = new Uint16Array(50);
-    nums.forEach(n => rawCount[n]++);
+    for (let i = 0; i < nums.length; i++) rawCount[nums[i]]++;
     const killSet = new Set(killNums);
     const funcs = getMatchFuncs(filters);
     const hitCounts = new Uint8Array(50);
     for (let n = 1; n <= 49; n++) {
       let hit = killSet.has(n) ? 1 : 0;
-      for (let fn of funcs) {
-        if (fn(n)) { hit++; if (hit > 6) break; }
+      for (let i = 0; i < funcs.length; i++) {
+        if (funcs[i](n)) { hit++; if (hit > 6) break; }
       }
       hitCounts[n] = hit;
     }
@@ -201,12 +199,12 @@
     return { adjustedCount: Array.from(adjustedCount), adjustedTotal, unique, hitCounts: Array.from(hitCounts), rawCount: Array.from(rawCount) };
   }
 
-  // ---------- Worker 通信 ----------
+  // ---------- Worker 通信 (保留) ----------
   let analysisWorker = null, workerReady = false;
   function initWorker() {
     if (analysisWorker) return;
     try {
-      analysisWorker = new Worker("worker.js?v=3.6.3");
+      analysisWorker = new Worker("worker.js");
       analysisWorker.onmessage = onWorkerMessage;
       analysisWorker.onerror = e => {
         console.error("Worker error:", e);
@@ -231,6 +229,45 @@
       renderResult(d.adjustedCount, d.adjustedTotal, d.unique, d.hitCounts, d.rawCount);
     } catch (err) { console.error("onWorkerMessage error:", err); }
   }
+
+  // ---------- 分析触发 ----------
+  let debounceTimer = null;
+  function runAnalysis() {
+    initWorker();
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      try {
+        const input = DOM.numbers ? DOM.numbers.value : "";
+        const parsed = parseInputCount(input);
+        if (DOM.charCount) DOM.charCount.textContent = parsed.nums.length;
+        if (DOM.numberWarn) {
+          if (parsed.truncated) {
+            DOM.numberWarn.classList.remove("hidden");
+            if (!window._truncToastShown) { showToast("⚠️ 输入号码超过" + MAX_NUMBERS + "个，已截断"); window._truncToastShown = true; setTimeout(() => window._truncToastShown = false, 2000); }
+          } else { DOM.numberWarn.classList.add("hidden"); }
+        }
+        if (workerReady && analysisWorker) {
+          analysisWorker.postMessage({ input, killNums: state.killNums, filters: getFilterSet() });
+        } else {
+          const res = computeAnalysisMainThread(input, state.killNums, getFilterSet());
+          lastRawCount = res.rawCount;
+          renderResult(res.adjustedCount, res.adjustedTotal, res.unique, res.hitCounts, res.rawCount);
+        }
+      } catch (err) { console.error("runAnalysis error:", err); }
+    }, 200);
+  }
+  function runAnalysisMainThread() {
+    try {
+      const input = DOM.numbers ? DOM.numbers.value : "";
+      const res = computeAnalysisMainThread(input, state.killNums, getFilterSet());
+      lastRawCount = res.rawCount;
+      renderResult(res.adjustedCount, res.adjustedTotal, res.unique, res.hitCounts, res.rawCount);
+    } catch (err) {
+      console.error("runAnalysisMainThread error:", err);
+      if (DOM.result) DOM.result.innerHTML = '<div class="text-center py-8 text-red-400">分析引擎异常，请刷新重试</div>';
+    }
+  }
+  function onStateChange() { runAnalysis(); saveState(); }
 
   // ---------- 黑洞特效 (保留) ----------
   let currentUniqueElement = null, lastUniqueNum = null;
@@ -526,10 +563,38 @@
   }
   function onStateChange() { runAnalysis(); saveState(); }
 
+
   // ---------- 开奖数据获取与渲染 ----------
   let isCurrentDrawComplete = false, lastLotteryPeriod = "", isFetchingLottery = false;
-
- async function fetchLottery() {
+  function checkDrawComplete(item) {
+    if (!item || !item.openCode) return false;
+    const codes = String(item.openCode).split(",").filter(c => c.trim() !== "");
+    return codes.length >= 7;
+  }
+  async function safeFetch(url, options = {}, retries = 2) {
+    for (let i = 0; i <= retries; i++) {
+      try {
+        let res;
+        if (typeof AbortController !== "undefined") {
+          const ctrl = new AbortController();
+          const tid = setTimeout(() => ctrl.abort(), options.timeout || 8000);
+          res = await fetch(url, { ...options, signal: ctrl.signal });
+          clearTimeout(tid);
+        } else {
+          res = await Promise.race([
+            fetch(url, options),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), options.timeout || 8000))
+          ]);
+        }
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res;
+      } catch (e) {
+        if (i === retries) throw e;
+        await new Promise(r => setTimeout(r, 800));
+      }
+    }
+  }
+  async function fetchLottery() {
     if (isFetchingLottery) return;
     isFetchingLottery = true;
     const btn = DOM.refreshLotteryBtn;
@@ -540,7 +605,7 @@
       const data = await res.json();
       if (!Array.isArray(data) || !data[0]) { showToast("暂无开奖数据"); return; }
       const item = data[0];
-      if (!item.openCode || typeof item.openCode !== "string" || !item.wave || !item.zodiac) { showToast("数据字段不完整"); return; }
+      if (!item.openCode || typeof item.openCode !== "string" || !item.wave) { showToast("数据字段不完整"); return; }
       try { localStorage.setItem(LS_CACHE_KEY, JSON.stringify({ data, time: Date.now() })); } catch (e) {}
       if (lastLotteryPeriod !== item.expect) { lastLotteryPeriod = item.expect; isCurrentDrawComplete = false; }
       renderLottery(item);
@@ -562,7 +627,8 @@
       if (btn) { btn.innerHTML = origHtml; btn.disabled = false; }
     }
   }
-// 1. 解析号码与波色
+
+  // ★ 修复后的 renderLottery（生肖、五行全用本地数据）
   function renderLottery(item) {
     const codes = String(item.openCode || "").split(",").map(c => escapeHtml(c.trim()));
     const waves = String(item.wave || "").split(",").map(w => {
@@ -572,7 +638,6 @@
       if (w === "绿" || w === "green") return "green";
       return w;
     });
-    // 生肖与五行改用本地数据计算，不依赖 API
     const zodiacs = codes.map(c => {
       const n = parseInt(c, 10);
       if (isNaN(n) || n < 1 || n > 49) return "";
@@ -615,19 +680,18 @@
     if (DOM.lotteryTime) DOM.lotteryTime.textContent = escapeHtml((item.openTime || "--").replace(" ", "\n"));
   }
 
-  // ---------- 历史记录（修复五行缺失和 ReferenceError） ----------
+  // ---------- 历史记录 (修复) ----------
   let currentHistoryData = [], currentHistorySorted = [], currentHistoryPage = 1, historyCache = {}, historyYearLoaded = null;
 
   function renderBallsHTML(codes, waves, zodiacs, year) {
-    year = year || CURRENT_YEAR;   // 防止 ReferenceError
+    year = year || CURRENT_YEAR;
     let html = "";
     codes.forEach((code, i) => {
       const wave = waves[i];
       const zodiac = zodiacs[i];
-      const cc = wave === "blue" || wave === "蓝" ? "history-ball-blue" :
-                 wave === "green" || wave === "绿" ? "history-ball-green" : "history-ball-red";
+      const cc = wave === "blue" || wave === "蓝" ? "history-ball-blue" : wave === "green" || wave === "绿" ? "history-ball-green" : "history-ball-red";
       const num = parseInt(code, 10);
-      const five = (num >= 1 && num <= 49) ? getFive(num, year) : "";  // 使用 getFive 计算五行
+      const five = (num >= 1 && num <= 49) ? getFive(num, year) : "";
       html += `<div class="history-ball-card ${cc}"><div class="history-ball-number">${escapeHtml(code)}</div><div class="history-ball-tag">${escapeHtml(zodiac || "")}/${escapeHtml(five)}</div></div>`;
       if (i === 5) html += '<span class="history-plus-sign">+</span>';
     });
@@ -667,7 +731,7 @@
           const codes = item.openCode.split(",").map(c => escapeHtml(c.trim()));
           const waves = (item.wave || "").split(",").map(w => escapeHtml(w.trim()));
           const zodiacs = (item.zodiac || "").split(",").map(z => escapeHtml(z.trim()));
-          const recordYear = historyYearLoaded || CURRENT_YEAR;  // 确保年份存在
+          const recordYear = historyYearLoaded || CURRENT_YEAR;
           ballsHtml = renderBallsHTML(codes, waves, zodiacs, recordYear);
         } else {
           ballsHtml = '<div style="display:flex; justify-content:center; align-items:center; padding:24px 0; color:#fbbf24; font-size:14px; font-weight:500;">待开奖</div>';
@@ -692,11 +756,11 @@
     } catch (e) {
       console.error("renderHistoryPage error:", e);
       const cont = document.getElementById("historyContent");
-      if (cont) cont.innerHTML = '<div style="color:#f87171;">历史加载失败: ' + escapeHtml(e.message) + '</div>';
+      if (cont) cont.innerHTML = '<div style="color:#f87171;">历史加载失败</div>';
     }
   }
 
-  // ---------- 抽屉系统 (移除 live 模板) ----------
+  // ---------- 抽屉系统 (无直播) ----------
   const DrawerSystem = {
     current: null,
     templates: {
@@ -704,89 +768,59 @@
       shengxiao: () => {
         const sxs = ["鼠","牛","虎","兔","龙","蛇","马","羊","猴","鸡","狗","猪"];
         const sel = state.selectedFilters.shengxiao;
-        return '<div class="dgrid-6">' + sxs.map(sx =>
-          `<label><input type="checkbox" class="filter-checkbox hidden" value="生肖${sx}" data-drawer="shengxiao" ${sel.includes("生肖"+sx)?"checked":""}><span class="filter-label dbtn">${sx}</span></label>`
-        ).join("") + "</div>";
+        return '<div class="dgrid-6">' + sxs.map(sx => `<label><input type="checkbox" class="filter-checkbox hidden" value="生肖${sx}" data-drawer="shengxiao" ${sel.includes("生肖"+sx)?"checked":""}><span class="filter-label dbtn">${sx}</span></label>`).join("") + "</div>";
       },
-      haomatou: function () {
+      haomatou: () => {
         const heads = [["0头单","1头单","2头单","3头单","4头单"],["0头双","1头双","2头双","3头双","4头双"]];
         const sel = state.selectedFilters.haomatou;
-        return heads.map(function (row) {
-          return '<div class="dflex">' + row.map(function (h) {
-            return '<label class="dflex-1"><input type="checkbox" class="filter-checkbox hidden" value="' + h + '" data-drawer="haomatou" ' + (sel.includes(h) ? "checked" : "") + '><span class="filter-label dbtn dbtn-sm">' + h + "</span></label>";
-          }).join("") + "</div>";
-        }).join("");
+        return heads.map(row => '<div class="dflex">' + row.map(h => `<label class="dflex-1"><input type="checkbox" class="filter-checkbox hidden" value="${h}" data-drawer="haomatou" ${sel.includes(h)?"checked":""}><span class="filter-label dbtn dbtn-sm">${h}</span></label>`).join("") + "</div>").join("");
       },
-      weishu: function () {
+      weishu: () => {
         const tails = [["0尾","1尾","2尾","3尾","4尾"],["5尾","6尾","7尾","8尾","9尾"]];
         const sel = state.selectedFilters.weishu;
-        return tails.map(function (row) {
-          return '<div class="dflex">' + row.map(function (t) {
-            return '<label class="dflex-1"><input type="checkbox" class="filter-checkbox hidden" value="' + t + '" data-drawer="weishu" ' + (sel.includes(t) ? "checked" : "") + '><span class="filter-label dbtn dbtn-sm">' + t + "</span></label>";
-          }).join("") + "</div>";
-        }).join("");
+        return tails.map(row => '<div class="dflex">' + row.map(t => `<label class="dflex-1"><input type="checkbox" class="filter-checkbox hidden" value="${t}" data-drawer="weishu" ${sel.includes(t)?"checked":""}><span class="filter-label dbtn dbtn-sm">${t}</span></label>`).join("") + "</div>").join("");
       },
-      shuduan: function () {
+      shuduan: () => {
         const duans = ["1段","2段","3段","4段","5段","6段","7段"];
         const sel = state.selectedFilters.shuduan;
-        return '<div class="dflex-wrap">' + duans.map(function (d) {
-          return '<label><input type="checkbox" class="filter-checkbox hidden" value="' + d + '" data-drawer="shuduan" ' + (sel.includes(d) ? "checked" : "") + '><span class="filter-label dbtn dbtn-md">' + d + "</span></label>";
-        }).join("") + "</div>";
+        return '<div class="dflex-wrap">' + duans.map(d => `<label><input type="checkbox" class="filter-checkbox hidden" value="${d}" data-drawer="shuduan" ${sel.includes(d)?"checked":""}><span class="filter-label dbtn dbtn-md">${d}</span></label>`).join("") + "</div>";
       },
-      bose: function () {
+      bose: () => {
         const items = [["红波单","蓝波单","绿波单"],["红波双","蓝波双","绿波双"]];
         const sel = state.selectedFilters.bose;
-        return items.map(function (row) {
-          return '<div class="dflex">' + row.map(function (item) {
-            return '<label class="dflex-1"><input type="checkbox" class="filter-checkbox hidden" value="' + item + '" data-drawer="bose" ' + (sel.includes(item) ? "checked" : "") + '><span class="filter-label dbtn dbtn-sm">' + item.replace("波", "") + "</span></label>";
-          }).join("") + "</div>";
-        }).join("");
+        return items.map(row => '<div class="dflex">' + row.map(item => `<label class="dflex-1"><input type="checkbox" class="filter-checkbox hidden" value="${item}" data-drawer="bose" ${sel.includes(item)?"checked":""}><span class="filter-label dbtn dbtn-sm">${item.replace("波","")}</span></label>`).join("") + "</div>").join("");
       },
       wuxing: () => {
-        const table = generateWuxingTable(new Date().getFullYear());
+        const table = generateWuxingTable(CURRENT_YEAR);
         const wx = {};
-        for (let [k,v] of Object.entries(table)) wx[k] = v.map(n=>String(n).padStart(2,'0')).join(' ');
+        for (const [k,v] of Object.entries(table)) wx[k] = v.map(n => String(n).padStart(2,'0')).join(' ');
         const sel = state.selectedFilters.wuxing;
-        return '<div class="dspace-y">' + Object.entries(wx).map(([k,v]) =>
-          `<div class="wuxing-row"><label class="ditems-center" style="gap:8px;min-width:0;flex-shrink:0;"><input type="checkbox" class="filter-checkbox hidden" value="${k}" data-drawer="wuxing" ${sel.includes(k)?"checked":""}><span class="filter-label dbtn dbtn-fixed wuxing-btn-fixed">${k}</span></label><span class="wuxing-nums">${v}</span></div>`
-        ).join("") + "</div>";
+        return '<div class="dspace-y">' + Object.entries(wx).map(([k,v]) => `<div class="wuxing-row"><label class="ditems-center" style="gap:8px;min-width:0;flex-shrink:0;"><input type="checkbox" class="filter-checkbox hidden" value="${k}" data-drawer="wuxing" ${sel.includes(k)?"checked":""}><span class="filter-label dbtn dbtn-fixed wuxing-btn-fixed">${k}</span></label><span class="wuxing-nums">${v}</span></div>`).join("") + "</div>";
       },
-      bandanshuang: function () {
+      bandanshuang: () => {
         const items = [["合数单","小单","大单"],["合数双","小双","大双"]];
         const sel = state.selectedFilters.bandanshuang;
-        return items.map(function (row) {
-          return '<div class="dflex">' + row.map(function (item) {
-            return '<label class="dflex-1"><input type="checkbox" class="filter-checkbox hidden" value="' + item + '" data-drawer="bandanshuang" ' + (sel.includes(item) ? "checked" : "") + '><span class="filter-label dbtn dbtn-sm">' + item + "</span></label>";
-          }).join("") + "</div>";
-        }).join("");
+        return items.map(row => '<div class="dflex">' + row.map(item => `<label class="dflex-1"><input type="checkbox" class="filter-checkbox hidden" value="${item}" data-drawer="bandanshuang" ${sel.includes(item)?"checked":""}><span class="filter-label dbtn dbtn-sm">${item}</span></label>`).join("") + "</div>").join("");
       },
-      heshu: function () {
-        const hes = Array.from({ length: 13 }, function (_, i) { return (i + 1) + "合"; });
+      heshu: () => {
+        const hes = Array.from({ length: 13 }, (_, i) => (i + 1) + "合");
         const sel = state.selectedFilters.heshu;
-        return '<div class="dgrid-4">' + hes.map(function (h) {
-          return '<label><input type="checkbox" class="filter-checkbox hidden" value="' + h + '" data-drawer="heshu" ' + (sel.includes(h) ? "checked" : "") + '><span class="filter-label dbtn dbtn-sm">' + h + "</span></label>";
-        }).join("") + "</div>";
+        return '<div class="dgrid-4">' + hes.map(h => `<label><input type="checkbox" class="filter-checkbox hidden" value="${h}" data-drawer="heshu" ${sel.includes(h)?"checked":""}><span class="filter-label dbtn dbtn-sm">${h}</span></label>`).join("") + "</div>";
       },
-       history: function () {
+      history: () => {
         let opts = "";
-        const currentYear = new Date().getFullYear();
-        for (let y = currentYear; y >= 2020; y--) opts += '<option value="' + y + '">' + y + "年</option>";
+        for (let y = new Date().getFullYear(); y >= 2020; y--) opts += `<option value="${y}">${y}年</option>`;
         return [
           '<div>',
-            '<select id="historyYear" class="dselect"><option value="">选择年份</option>' + opts + "</select>",
-            '<div id="historyLoading" class="dhidden dtext-center dpy-4">',
-              '<svg class="animate-spin" style="width:24px; height:24px; margin:0 auto; color:#00ffea;" fill="none" viewBox="0 0 24 24">',
-                '<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>',
-                '<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>',
-              "</svg>",
-            "</div>",
+            `<select id="historyYear" class="dselect"><option value="">选择年份</option>${opts}</select>`,
+            '<div id="historyLoading" class="dhidden dtext-center dpy-4"><svg class="animate-spin" style="width:24px;height:24px;margin:0 auto;color:#00ffea;" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div>',
             '<div id="historyContent" class="dmt-3 hide-scrollbar"></div>',
             '<div id="historyPagination" class="dflex-between dmt-6 dpx-1 dhidden">',
               '<button id="history-prev" class="dpage-btn">← 上1页</button>',
-              '<div class="dtext-sm" style="text-align:center;">第 <span id="historyPageNum" style="font-weight:bold; color:#00ffea;">1</span> 页 / <span id="historyTotalPages" class="dtext-gray">1</span> 页</div>',
+              '<div class="dtext-sm" style="text-align:center;">第 <span id="historyPageNum" style="font-weight:bold;color:#00ffea;">1</span> 页 / <span id="historyTotalPages" class="dtext-gray">1</span> 页</div>',
               '<button id="history-next" class="dpage-btn">下1页 →</button>',
-            "</div>",
-          "</div>"
+            '</div>',
+          '</div>'
         ].join("");
       }
     },
@@ -940,8 +974,6 @@ function initParticles() {
     document.addEventListener("visibilitychange", function () { if (document.hidden) stop(); else start(); });
   }
 
-
-  // ---------- 初始化 ----------
   function init() {
     try {
       cacheDOM(); loadState(); initWorker(); subscribe(onStateChange); initResultDelegation(); DrawerSystem.bindGlobalDelegation();
@@ -954,7 +986,7 @@ function initParticles() {
         btn.addEventListener("click", e => {
           e.stopPropagation();
           const drawer = btn.dataset.drawer;
-          if (drawer === "selectnone") { clearAllFilters(); const killInput = document.getElementById("kill-input"); if (killInput) killInput.value = ""; DrawerSystem.close(); showToast("已清空所有筛选"); }
+          if (drawer === "selectnone") { clearAllFilters(); DrawerSystem.close(); showToast("已清空所有筛选"); }
           else DrawerSystem.open(drawer);
         });
       });
@@ -962,7 +994,7 @@ function initParticles() {
       if (DOM.drawer_overlay) DOM.drawer_overlay.addEventListener("click", () => DrawerSystem.close());
       fetchLottery(); runAnalysis(); initAutoRefresh(); initParticles();
       window.addEventListener("beforeunload", () => terminateWorker());
-      console.log("%c✅ 神码再现 v3.6.3 (无直播版) 已加载", "color:#00ffea;font-weight:bold");
+      console.log("%c✅ 神码再现 v3.6.3 无直播版已加载", "color:#00ffea;font-weight:bold");
     } catch (e) { console.error("初始化失败:", e); alert("页面初始化出错，请刷新重试。错误: " + e.message); }
   }
 
