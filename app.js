@@ -173,7 +173,7 @@
     return () => false;
   }
 
-  // ---------- 主线程分析 (保留) ----------
+  // ---------- 主线程分析 (降级) ----------
   function computeAnalysisMainThread(input, killNums, filters) {
     const nums = parseInputCount(input).nums;
     const rawCount = new Uint16Array(50);
@@ -199,7 +199,7 @@
     return { adjustedCount: Array.from(adjustedCount), adjustedTotal, unique, hitCounts: Array.from(hitCounts), rawCount: Array.from(rawCount) };
   }
 
-  // ---------- Worker 通信 (保留) ----------
+  // ---------- Worker 通信 ----------
   let analysisWorker = null, workerReady = false;
   function initWorker() {
     if (analysisWorker) return;
@@ -230,7 +230,7 @@
     } catch (err) { console.error("onWorkerMessage error:", err); }
   }
 
-  // ---------- 分析触发 ----------
+  // ---------- 分析触发（仅此一份，移除重复）----------
   let debounceTimer = null;
   function runAnalysis() {
     initWorker();
@@ -269,29 +269,26 @@
   }
   function onStateChange() { runAnalysis(); saveState(); }
 
-  // ---------- 黑洞特效 (保留) ----------
+  // ---------- 黑洞特效 ----------
   let currentUniqueElement = null, lastUniqueNum = null;
   function launchUniqueFlyEffect(targetNum, colorClass) {
-  document.querySelectorAll(".flying-unique-ball, .blackhole, .distortion, .accretion-disk, .particle-stream").forEach(function (el) { el.remove(); });
+    document.querySelectorAll(".flying-unique-ball, .blackhole, .distortion, .accretion-disk, .particle-stream").forEach(function (el) { el.remove(); });
     var targetEl = DOM.result.querySelector('[data-num="' + targetNum + '"]');
     if (!targetEl) return;
     var targetRect = targetEl.getBoundingClientRect();
     var endX = targetRect.left + targetRect.width / 2;
     var endY = targetRect.top + targetRect.height / 2;
-    // 黑洞位置：屏幕中上部，避开底部导航抽屉
     var centerX = window.innerWidth / 2;
     var centerY = window.innerHeight * 0.35;
     var color = colorClass === "ball-red" ? "#ff3366" : colorClass === "ball-green" ? "#33cc66" : "#3366ff";
     var darkColor = colorClass === "ball-red" ? "#660022" : colorClass === "ball-green" ? "#004422" : "#002266";
     
-    // 吸积盘（旋转光环）
     var disk = document.createElement("div");
     disk.className = "accretion-disk";
     disk.style.cssText = "position:fixed;left:" + centerX + "px;top:" + centerY + "px;width:0;height:0;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);";
     document.body.appendChild(disk);
     
-    var i;
-    for (i = 0; i < 4; i++) {
+    for (var i = 0; i < 4; i++) {
       (function(idx) {
         var ring = document.createElement("div");
         ring.style.cssText = "position:absolute;left:50%;top:50%;width:0;height:0;border:2px solid " + color + ";border-radius:50%;transform:translate(-50%,-50%);opacity:0.6;border-top-color:transparent;border-bottom-color:transparent;";
@@ -305,7 +302,6 @@
       })(i);
     }
     
-    // 黑洞本体
     var blackhole = document.createElement("div");
     blackhole.className = "blackhole";
     blackhole.style.cssText = "position:fixed;left:" + centerX + "px;top:" + centerY + "px;width:0;height:0;background:radial-gradient(circle,#000 20%," + darkColor + " 50%," + color + " 70%,transparent 100%);border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:9999;box-shadow:0 0 60px " + color + ", inset 0 0 40px " + color + ";";
@@ -320,32 +316,24 @@
     ], { duration: 4000, easing: 'ease-in-out' });
     bhAnim.onfinish = function() { blackhole.remove(); disk.remove(); };
     
-    // 球体：从目标位置被吸入黑洞
     var ball = document.createElement("div");
     ball.className = "flying-unique-ball " + colorClass;
     ball.textContent = String(targetNum).padStart(2, "0");
     ball.style.cssText = "position:fixed;left:" + endX + "px;top:" + endY + "px;transform:translate(-50%,-50%) scale(1);z-index:10000;";
     document.body.appendChild(ball);
     
-    // 吸入阶段（变慢：2秒）
     var startTime = performance.now();
     var phase1Duration = 2000;
-    
     function phase1(now) {
       var progress = Math.min((now - startTime) / phase1Duration, 1);
-      // 慢速缓动：ease-in-out-cubic
       var ease = progress < 0.5 ? 4 * progress * progress * progress : 1 - Math.pow(-2 * progress + 2, 3) / 2;
-      
       var currentX = endX + (centerX - endX) * ease;
       var currentY = endY + (centerY - endY) * ease;
       var scale = 1 - ease * 0.9;
       var rotate = ease * 1080;
-      
       ball.style.left = currentX + "px";
       ball.style.top = currentY + "px";
       ball.style.transform = "translate(-50%,-50%) scale(" + scale + ") rotate(" + rotate + "deg)";
-      
-      // 尾迹粒子（更频繁）
       if (progress < 1 && Math.random() > 0.5) {
         var trail = document.createElement("div");
         trail.className = "particle-stream";
@@ -356,42 +344,30 @@
           { transform: 'translate(-50%,-50%) scale(0)', opacity: 0 }
         ], { duration: 500 }).onfinish = function() { trail.remove(); };
       }
-      
       if (progress < 1) {
         requestAnimationFrame(phase1);
       } else {
-        // 进入黑洞，短暂隐藏
         ball.style.transform = "translate(-50%,-50%) scale(0)";
         ball.style.opacity = 0;
-        
-        // 延迟后喷出
         setTimeout(function() {
           phase2Start = performance.now();
           requestAnimationFrame(phase2);
         }, 400);
       }
     }
-    
-    // 喷出阶段（1.6秒）
     var phase2Start;
     var phase2Duration = 1600;
-    
     function phase2(now) {
       var progress = Math.min((now - phase2Start) / phase2Duration, 1);
       var ease = progress < 0.5 ? 4 * progress * progress * progress : 1 - Math.pow(-2 * progress + 2, 3) / 2;
-      
-      // 从黑洞喷出到目标位置
       var currentX = centerX + (endX - centerX) * ease;
       var currentY = centerY + (endY - centerY) * ease;
       var scale = 0.1 + ease * 0.9;
       var rotate = -1080 * (1 - ease);
-      
       ball.style.left = currentX + "px";
       ball.style.top = currentY + "px";
       ball.style.transform = "translate(-50%,-50%) scale(" + scale + ") rotate(" + rotate + "deg)";
       ball.style.opacity = Math.min(1, ease * 2);
-      
-      // 喷出粒子
       if (progress < 0.5 && Math.random() > 0.5) {
         var jet = document.createElement("div");
         jet.style.cssText = "position:fixed;left:" + currentX + "px;top:" + currentY + "px;width:3px;height:3px;background:" + color + ";border-radius:50%;pointer-events:none;z-index:9997;box-shadow:0 0 6px " + color + ";";
@@ -403,22 +379,17 @@
           { transform: 'translate(' + (Math.cos(jetAngle)*jetDist) + 'px,' + (Math.sin(jetAngle)*jetDist) + 'px) scale(0)', opacity: 0 }
         ], { duration: 600 }).onfinish = function() { jet.remove(); };
       }
-      
       if (progress < 1) {
         requestAnimationFrame(phase2);
       } else {
-        // 着陆
         ball.remove();
         targetEl.classList.add("landing-shock", "flash-unique");
         setTimeout(function() { targetEl.classList.remove("landing-shock"); }, 400);
         showToast("🌌 黑洞吞噬：" + String(targetNum).padStart(2, "0") + " 号");
       }
     }
-    
     requestAnimationFrame(phase1);
   }
-
-//黑洞特效结束
 
   // ---------- 渲染分析结果 ----------
   function renderResult(adjustedCount, adjustedTotal, unique, hitCounts, rawCount) {
@@ -466,9 +437,8 @@
         htmlParts.push("</div></div>");
       }
 
-      if (unique === 0) htmlParts.push('<div class="text-center py-8 text-amber-400">⚡ 请输入号码启动分析 ⚡</div>');
+      if (unique === 0) htmlParts.push('<div class="text-center py-8 text-amber-400">⚡ 所有号码频次归零，请调整筛选条件 ⚡</div>');
 
-      // 零次出现号码 (原稿中有单独展示)
       const zeroCountNumbers = [];
       if (rawCount && rawCount.length) {
         for (let n = 1; n <= 49; n++) { if (rawCount[n] === 0) zeroCountNumbers.push(n); }
@@ -523,7 +493,6 @@
       if (!Number.isNaN(num)) copyNumber(num);
     });
   }
-
 
   // ---------- 开奖数据获取与渲染 ----------
   let isCurrentDrawComplete = false, lastLotteryPeriod = "", isFetchingLottery = false;
@@ -589,7 +558,6 @@
     }
   }
 
-  // ★ 修复后的 renderLottery（生肖、五行全用本地数据）
   function renderLottery(item) {
     const codes = String(item.openCode || "").split(",").map(c => escapeHtml(c.trim()));
     const waves = String(item.wave || "").split(",").map(w => {
@@ -641,7 +609,7 @@
     if (DOM.lotteryTime) DOM.lotteryTime.textContent = escapeHtml((item.openTime || "--").replace(" ", "\n"));
   }
 
-  // ---------- 历史记录 (修复) ----------
+  // ---------- 历史记录 ----------
   let currentHistoryData = [], currentHistorySorted = [], currentHistoryPage = 1, historyCache = {}, historyYearLoaded = null;
 
   function renderBallsHTML(codes, waves, zodiacs, year) {
@@ -721,7 +689,7 @@
     }
   }
 
-  // ---------- 抽屉系统 (无直播) ----------
+  // ---------- 抽屉系统 ----------
   const DrawerSystem = {
     current: null,
     templates: {
@@ -799,10 +767,8 @@
       DOM.drawer_container.classList.add("open");
       this.updateNavState(type);
       if (type === "history") setTimeout(() => { const sel = document.getElementById("historyYear"); if (sel && !sel.value) sel.value = historyYearLoaded || ""; if (sel) sel.dispatchEvent(new Event("change")); }, 50);
-      // 不再调用 connectLiveSource
     },
     close() {
-      // 移除 destroyLivePlayer 调用
       DOM.drawer_container.classList.remove("open");
       DOM.drawer_overlay.classList.add("opacity-0");
       DOM.drawer_overlay.style.opacity = "0";
@@ -884,7 +850,7 @@
   }
   window.copyResult = copyResult;
 
-  // ---------- 自动刷新开奖 (保留) ----------
+  // ---------- 自动刷新开奖 ----------
   function initAutoRefresh() {
     setInterval(() => {
       if (isCurrentDrawComplete || isFetchingLottery) return;
@@ -899,8 +865,8 @@
     }, 1000);
   }
 
-  // ---------- 粒子背景 (保留) ----------
-function initParticles() {
+  // ---------- 粒子背景 ----------
+  function initParticles() {
     const canvas = document.getElementById("particle-canvas");
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -935,6 +901,7 @@ function initParticles() {
     document.addEventListener("visibilitychange", function () { if (document.hidden) stop(); else start(); });
   }
 
+  // ---------- 初始化 ----------
   function init() {
     try {
       cacheDOM(); loadState(); initWorker(); subscribe(onStateChange); initResultDelegation(); DrawerSystem.bindGlobalDelegation();
