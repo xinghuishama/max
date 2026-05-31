@@ -591,44 +591,68 @@
       if (btn) { btn.innerHTML = origHtml; btn.disabled = false; }
     }
   }
-  function renderLottery(item) {
-    const codes = String(item.openCode || "").split(",").map(c => escapeHtml(c.trim()));
-    const waves = String(item.wave || "").split(",").map(w => w.trim() === "红" || w === "red" ? "red" : w === "蓝" || w === "blue" ? "blue" : w === "绿" || w === "green" ? "green" : w);
-    const zodiacs = String(item.zodiac || "").split(",").map(z => escapeHtml(z.trim()));
-    const container = DOM.lotteryBalls;
-    if (!container) return;
-    container.className = "result-balls-row";
-    container.innerHTML = "";
-    const wxClassMap = { 金: "wx-gold", 木: "wx-wood", 水: "wx-water", 火: "wx-fire", 土: "wx-earth" };
-    for (let i = 0; i < 6 && i < codes.length; i++) {
-      const num = parseInt(codes[i], 10);
-      const colorClass = waves[i] === "red" ? "result-ball-red" : (waves[i] === "green" ? "result-ball-green" : "result-ball-blue");
-      const wx = (num >= 1 && num <= 49) ? getFive(num) : "?";
-      const wxCls = wxClassMap[wx] || "";
-      const div = document.createElement("div");
-      div.className = "result-ball-item";
-      div.innerHTML = `<div class="result-ball ${colorClass}" style="animation-delay: ${i * 150}ms">${escapeHtml(codes[i].padStart(2, "0"))}<div class="result-ball-meta">${zodiacs[i] || ""}/<span class="${wxCls}">${wx}</span></div></div>`;
-      container.appendChild(div);
-    }
-    if (codes.length >= 7) {
-      const plus = document.createElement("div");
-      plus.className = "result-plus-sign";
-      plus.textContent = "+";
-      container.appendChild(plus);
-      const num = parseInt(codes[6], 10);
-      const colorClass = waves[6] === "red" ? "result-ball-red" : (waves[6] === "green" ? "result-ball-green" : "result-ball-blue");
-      const wx = (num >= 1 && num <= 49) ? getFive(num) : "?";
-      const wxCls = wxClassMap[wx] || "";
-      const div = document.createElement("div");
-      div.className = "result-ball-item";
-      div.innerHTML = `<div class="result-ball ${colorClass}" style="animation-delay: ${6 * 150}ms">${escapeHtml(codes[6].padStart(2, "0"))}<div class="result-ball-meta">${zodiacs[6] || ""}/<span class="${wxCls}">${wx}</span></div></div>`;
-      container.appendChild(div);
-    }
-    void container.offsetHeight;
-    if (DOM.lotteryPeriod) DOM.lotteryPeriod.textContent = escapeHtml(item.expect || "--");
-    if (DOM.lotteryTime) DOM.lotteryTime.textContent = escapeHtml((item.openTime || "--").replace(" ", "\n"));
+function renderLottery(item) {
+  // 1. 解析号码与波色
+  const codes = String(item.openCode || "").split(",").map(c => escapeHtml(c.trim()));
+  const waves = String(item.wave || "").split(",").map(w => {
+    w = w.trim();
+    if (w === "红" || w === "red") return "red";
+    if (w === "蓝" || w === "blue") return "blue";
+    if (w === "绿" || w === "green") return "green";
+    return w;
+  });
+
+  // 2. 本地计算生肖和五行（不再依赖 API 的 zodiac）
+  const zodiacs = codes.map(c => {
+    const n = parseInt(c, 10);
+    if (isNaN(n) || n < 1 || n > 49) return "";
+    return numProps[n]?.shengXiao || "";   // 直接从本地属性取生肖
+  });
+
+  const container = DOM.lotteryBalls;
+  if (!container) return;
+  container.className = "result-balls-row";
+  container.innerHTML = "";
+
+  const wxClassMap = { 金: "wx-gold", 木: "wx-wood", 水: "wx-water", 火: "wx-fire", 土: "wx-earth" };
+
+  // 3. 渲染前 6 个正码
+  for (let i = 0; i < 6 && i < codes.length; i++) {
+    const num = parseInt(codes[i], 10);
+    const colorClass = waves[i] === "red" ? "result-ball-red" : (waves[i] === "green" ? "result-ball-green" : "result-ball-blue");
+    const wx = (num >= 1 && num <= 49) ? (numProps[num]?.five || "?") : "?";   // 使用本地五行
+    const wxCls = wxClassMap[wx] || "";
+
+    const div = document.createElement("div");
+    div.className = "result-ball-item";
+    div.innerHTML = `<div class="result-ball ${colorClass}" style="animation-delay: ${i * 150}ms">${escapeHtml(codes[i].padStart(2, "0"))}<div class="result-ball-meta">${escapeHtml(zodiacs[i])}/<span class="${wxCls}">${wx}</span></div></div>`;
+    container.appendChild(div);
   }
 
+  // 4. 特码（第 7 个号码）
+  if (codes.length >= 7) {
+    const plus = document.createElement("div");
+    plus.className = "result-plus-sign";
+    plus.textContent = "+";
+    container.appendChild(plus);
+
+    const num = parseInt(codes[6], 10);
+    const colorClass = waves[6] === "red" ? "result-ball-red" : (waves[6] === "green" ? "result-ball-green" : "result-ball-blue");
+    const wx = (num >= 1 && num <= 49) ? (numProps[num]?.five || "?") : "?";
+    const wxCls = wxClassMap[wx] || "";
+
+    const div = document.createElement("div");
+    div.className = "result-ball-item";
+    div.innerHTML = `<div class="result-ball ${colorClass}" style="animation-delay: ${6 * 150}ms">${escapeHtml(codes[6].padStart(2, "0"))}<div class="result-ball-meta">${escapeHtml(zodiacs[6])}/<span class="${wxCls}">${wx}</span></div></div>`;
+    container.appendChild(div);
+  }
+
+  // 5. 强制重绘触发动画
+  void container.offsetHeight;
+
+  if (DOM.lotteryPeriod) DOM.lotteryPeriod.textContent = escapeHtml(item.expect || "--");
+  if (DOM.lotteryTime) DOM.lotteryTime.textContent = escapeHtml((item.openTime || "--").replace(" ", "\n"));
+}
   // ---------- 历史记录 (保留) ----------
   let currentHistoryData = [], currentHistorySorted = [], currentHistoryPage = 1, historyCache = {}, historyYearLoaded = null;
   function renderBallsHTML(codes, waves, zodiacs, year = new Date().getFullYear()) {
