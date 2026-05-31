@@ -655,19 +655,20 @@ function renderLottery(item) {
 }
   // ---------- 历史记录 (保留) ----------
   let currentHistoryData = [], currentHistorySorted = [], currentHistoryPage = 1, historyCache = {}, historyYearLoaded = null;
-  function renderBallsHTML(codes, waves, zodiacs, year = new Date().getFullYear()) {
-    let html = "";
-    codes.forEach((code, i) => {
-      const wave = waves[i];
-      const zodiac = zodiacs[i];
-      const cc = wave === "blue" || wave === "蓝" ? "history-ball-blue" : wave === "green" || wave === "绿" ? "history-ball-green" : "history-ball-red";
-      const num = parseInt(code, 10);
-      const five = (num >= 1 && num <= 49) ? getFive(num) : "";
-      html += `<div class="history-ball-card ${cc}"><div class="history-ball-number">${escapeHtml(code)}</div><div class="history-ball-tag">${escapeHtml(zodiac || "")}/${escapeHtml(five)}</div></div>`;
-      if (i === 5) html += '<span class="history-plus-sign">+</span>';
-    });
-    return html;
-  }
+ function renderBallsHTML(codes, waves, zodiacs, year = CURRENT_YEAR) {
+  let html = "";
+  codes.forEach((code, i) => {
+    const wave = waves[i];
+    const zodiac = zodiacs[i];
+    const cc = wave === "blue" || wave === "蓝" ? "history-ball-blue" : wave === "green" || wave === "绿" ? "history-ball-green" : "history-ball-red";
+    const num = parseInt(code, 10);
+    // 根据号码和开奖年份计算五行
+    const five = (num >= 1 && num <= 49) ? getNumberWuxing(num, year) : "";
+    html += `<div class="history-ball-card ${cc}"><div class="history-ball-number">${escapeHtml(code)}</div><div class="history-ball-tag">${escapeHtml(zodiac || "")}/${escapeHtml(five)}</div></div>`;
+    if (i === 5) html += '<span class="history-plus-sign">+</span>';
+  });
+  return html;
+}
   function ensureHistorySorted() {
     if (currentHistorySorted.length > 0) return;
     const seen = new Set();
