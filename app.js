@@ -13,6 +13,9 @@
   const getFive = DATA.getNumberWuxing || function () { return "?"; };
   const generateWuxingTable = DATA.generateWuxing || function () { return { 金:[],木:[],水:[],火:[],土:[] }; };
 
+  // 当前年份（用于五行计算）
+  const CURRENT_YEAR = new Date().getFullYear();
+
   // ---------- 常量配置 ----------
   const API_CONFIG = {
     live: "https://macaumarksix.com/api/live2",
@@ -31,7 +34,6 @@
       "drawer-overlay","drawer-container","drawer-title","drawer-content","drawer-close","toast"
     ];
     ids.forEach(id => { DOM[id.replace(/-/g, "_")] = document.getElementById(id); });
-    // 一些元素 ID 含连字符，单独处理
     if (!DOM.drawer_content) DOM.drawer_content = document.getElementById("drawer-content");
     if (!DOM.drawer_container) DOM.drawer_container = document.getElementById("drawer-container");
     if (!DOM.drawer_overlay) DOM.drawer_overlay = document.getElementById("drawer-overlay");
@@ -61,15 +63,12 @@
     for (let k in state.selectedFilters) state.selectedFilters[k] = [];
     notify();
   }
-  function getFilterSet() {
-    return Object.values(state.selectedFilters).flat();
-  }
+  function getFilterSet() { return Object.values(state.selectedFilters).flat(); }
 
-  // 持久化状态 (7天过期)
   function saveState() {
     try {
       localStorage.setItem(LS_KEY, JSON.stringify({ killNums: state.killNums, selectedFilters: state.selectedFilters, _t: Date.now() }));
-    } catch (e) {}
+    } catch(e) {}
   }
   function loadState() {
     try {
@@ -84,7 +83,7 @@
           if (Array.isArray(parsed.selectedFilters[k])) state.selectedFilters[k] = [...parsed.selectedFilters[k]];
         }
       }
-    } catch (e) { console.warn("loadState failed", e); }
+    } catch(e) { console.warn("loadState failed", e); }
   }
 
   // ---------- 工具函数 ----------
@@ -110,8 +109,7 @@
   // ---------- 输入解析 ----------
   function parseInputCount(input) {
     if (!input || !input.trim()) return { nums: [], truncated: false };
-    let cleaned = input.replace(/《.*?》/g, " ").replace(/[^0-9鼠牛虎兔龙蛇马羊猴鸡狗猪]/g, " ")
-                       .replace(/([鼠牛虎兔龙蛇马羊猴鸡狗猪])/g, " $1 ");
+    let cleaned = input.replace(/《.*?》/g, " ").replace(/[^0-9鼠牛虎兔龙蛇马羊猴鸡狗猪]/g, " ").replace(/([鼠牛虎兔龙蛇马羊猴鸡狗猪])/g, " $1 ");
     const tokens = cleaned.split(" ").filter(t => t.length);
     if (!tokens.length) return { nums: [], truncated: false };
     let results = [];
@@ -128,7 +126,7 @@
     return { nums: results, truncated };
   }
 
-  // ---------- 筛选条件匹配函数生成 (基于 numProps) ----------
+  // ---------- 筛选匹配函数 ----------
   let cachedMatchFuncs = null, lastFilterSignature = "";
   function getMatchFuncs(filters) {
     const allConds = filters || getFilterSet();
@@ -163,7 +161,7 @@
       return n => numProps[n] && numProps[n].color === colorMap[c] && numProps[n].odd === oe;
     }
     if (["金","木","水","火","土"].includes(cond)) {
-      return n => getFive(n) === cond; // 直接使用 DATA.getNumberWuxing
+      return n => getFive(n, CURRENT_YEAR) === cond;  // 传入年份
     }
     if (["合数单","合数双","大单","大双","小单","小双"].includes(cond)) {
       if (cond === "合数单") return n => numProps[n] && numProps[n].sumOdd === "合数单";
@@ -528,37 +526,10 @@
   }
   function onStateChange() { runAnalysis(); saveState(); }
 
-  // ---------- 开奖数据获取与渲染 (保留不变) ----------
+  // ---------- 开奖数据获取与渲染 ----------
   let isCurrentDrawComplete = false, lastLotteryPeriod = "", isFetchingLottery = false;
-  function checkDrawComplete(item) {
-    if (!item || !item.openCode) return false;
-    const codes = String(item.openCode).split(",").filter(c => c.trim() !== "");
-    return codes.length >= 7;
-  }
-  async function safeFetch(url, options = {}, retries = 2) {
-    for (let i = 0; i <= retries; i++) {
-      try {
-        let res;
-        if (typeof AbortController !== "undefined") {
-          const ctrl = new AbortController();
-          const tid = setTimeout(() => ctrl.abort(), options.timeout || 8000);
-          res = await fetch(url, { ...options, signal: ctrl.signal });
-          clearTimeout(tid);
-        } else {
-          res = await Promise.race([
-            fetch(url, options),
-            new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), options.timeout || 8000))
-          ]);
-        }
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        return res;
-      } catch (e) {
-        if (i === retries) throw e;
-        await new Promise(r => setTimeout(r, 800));
-      }
-    }
-  }
-  async function fetchLottery() {
+
+ async function fetchLottery() {
     if (isFetchingLottery) return;
     isFetchingLottery = true;
     const btn = DOM.refreshLotteryBtn;
@@ -591,93 +562,88 @@
       if (btn) { btn.innerHTML = origHtml; btn.disabled = false; }
     }
   }
-function renderLottery(item) {
-  // 1. 解析号码与波色
-  const codes = String(item.openCode || "").split(",").map(c => escapeHtml(c.trim()));
-  const waves = String(item.wave || "").split(",").map(w => {
-    w = w.trim();
-    if (w === "红" || w === "red") return "red";
-    if (w === "蓝" || w === "blue") return "blue";
-    if (w === "绿" || w === "green") return "green";
-    return w;
-  });
+// 1. 解析号码与波色
+  function renderLottery(item) {
+    const codes = String(item.openCode || "").split(",").map(c => escapeHtml(c.trim()));
+    const waves = String(item.wave || "").split(",").map(w => {
+      w = w.trim();
+      if (w === "红" || w === "red") return "red";
+      if (w === "蓝" || w === "blue") return "blue";
+      if (w === "绿" || w === "green") return "green";
+      return w;
+    });
+    // 生肖与五行改用本地数据计算，不依赖 API
+    const zodiacs = codes.map(c => {
+      const n = parseInt(c, 10);
+      if (isNaN(n) || n < 1 || n > 49) return "";
+      return numProps[n]?.shengXiao || "";
+    });
 
-  // 2. 本地计算生肖和五行（不再依赖 API 的 zodiac）
-  const zodiacs = codes.map(c => {
-    const n = parseInt(c, 10);
-    if (isNaN(n) || n < 1 || n > 49) return "";
-    return numProps[n]?.shengXiao || "";   // 直接从本地属性取生肖
-  });
+    const container = DOM.lotteryBalls;
+    if (!container) return;
+    container.className = "result-balls-row";
+    container.innerHTML = "";
 
-  const container = DOM.lotteryBalls;
-  if (!container) return;
-  container.className = "result-balls-row";
-  container.innerHTML = "";
+    const wxClassMap = { 金: "wx-gold", 木: "wx-wood", 水: "wx-water", 火: "wx-fire", 土: "wx-earth" };
 
-  const wxClassMap = { 金: "wx-gold", 木: "wx-wood", 水: "wx-water", 火: "wx-fire", 土: "wx-earth" };
-
-  // 3. 渲染前 6 个正码
-  for (let i = 0; i < 6 && i < codes.length; i++) {
-    const num = parseInt(codes[i], 10);
-    const colorClass = waves[i] === "red" ? "result-ball-red" : (waves[i] === "green" ? "result-ball-green" : "result-ball-blue");
-    const wx = (num >= 1 && num <= 49) ? (numProps[num]?.five || "?") : "?";   // 使用本地五行
-    const wxCls = wxClassMap[wx] || "";
-
-    const div = document.createElement("div");
-    div.className = "result-ball-item";
-    div.innerHTML = `<div class="result-ball ${colorClass}" style="animation-delay: ${i * 150}ms">${escapeHtml(codes[i].padStart(2, "0"))}<div class="result-ball-meta">${escapeHtml(zodiacs[i])}/<span class="${wxCls}">${wx}</span></div></div>`;
-    container.appendChild(div);
+    for (let i = 0; i < 6 && i < codes.length; i++) {
+      const num = parseInt(codes[i], 10);
+      const colorClass = waves[i] === "red" ? "result-ball-red" : (waves[i] === "green" ? "result-ball-green" : "result-ball-blue");
+      const wx = (num >= 1 && num <= 49) ? (numProps[num]?.five || "?") : "?";
+      const wxCls = wxClassMap[wx] || "";
+      const div = document.createElement("div");
+      div.className = "result-ball-item";
+      div.innerHTML = `<div class="result-ball ${colorClass}" style="animation-delay: ${i * 150}ms">${escapeHtml(codes[i].padStart(2, "0"))}<div class="result-ball-meta">${escapeHtml(zodiacs[i])}/<span class="${wxCls}">${wx}</span></div></div>`;
+      container.appendChild(div);
+    }
+    if (codes.length >= 7) {
+      const plus = document.createElement("div");
+      plus.className = "result-plus-sign";
+      plus.textContent = "+";
+      container.appendChild(plus);
+      const num = parseInt(codes[6], 10);
+      const colorClass = waves[6] === "red" ? "result-ball-red" : (waves[6] === "green" ? "result-ball-green" : "result-ball-blue");
+      const wx = (num >= 1 && num <= 49) ? (numProps[num]?.five || "?") : "?";
+      const wxCls = wxClassMap[wx] || "";
+      const div = document.createElement("div");
+      div.className = "result-ball-item";
+      div.innerHTML = `<div class="result-ball ${colorClass}" style="animation-delay: ${6 * 150}ms">${escapeHtml(codes[6].padStart(2, "0"))}<div class="result-ball-meta">${escapeHtml(zodiacs[6])}/<span class="${wxCls}">${wx}</span></div></div>`;
+      container.appendChild(div);
+    }
+    void container.offsetHeight;
+    if (DOM.lotteryPeriod) DOM.lotteryPeriod.textContent = escapeHtml(item.expect || "--");
+    if (DOM.lotteryTime) DOM.lotteryTime.textContent = escapeHtml((item.openTime || "--").replace(" ", "\n"));
   }
 
-  // 4. 特码（第 7 个号码）
-  if (codes.length >= 7) {
-    const plus = document.createElement("div");
-    plus.className = "result-plus-sign";
-    plus.textContent = "+";
-    container.appendChild(plus);
-
-    const num = parseInt(codes[6], 10);
-    const colorClass = waves[6] === "red" ? "result-ball-red" : (waves[6] === "green" ? "result-ball-green" : "result-ball-blue");
-    const wx = (num >= 1 && num <= 49) ? (numProps[num]?.five || "?") : "?";
-    const wxCls = wxClassMap[wx] || "";
-
-    const div = document.createElement("div");
-    div.className = "result-ball-item";
-    div.innerHTML = `<div class="result-ball ${colorClass}" style="animation-delay: ${6 * 150}ms">${escapeHtml(codes[6].padStart(2, "0"))}<div class="result-ball-meta">${escapeHtml(zodiacs[6])}/<span class="${wxCls}">${wx}</span></div></div>`;
-    container.appendChild(div);
-  }
-
-  // 5. 强制重绘触发动画
-  void container.offsetHeight;
-
-  if (DOM.lotteryPeriod) DOM.lotteryPeriod.textContent = escapeHtml(item.expect || "--");
-  if (DOM.lotteryTime) DOM.lotteryTime.textContent = escapeHtml((item.openTime || "--").replace(" ", "\n"));
-}
-  // ---------- 历史记录 (保留) ----------
+  // ---------- 历史记录（修复五行缺失和 ReferenceError） ----------
   let currentHistoryData = [], currentHistorySorted = [], currentHistoryPage = 1, historyCache = {}, historyYearLoaded = null;
- function renderBallsHTML(codes, waves, zodiacs, year = CURRENT_YEAR) {
-  let html = "";
-  codes.forEach((code, i) => {
-    const wave = waves[i];
-    const zodiac = zodiacs[i];
-    const cc = wave === "blue" || wave === "蓝" ? "history-ball-blue" : wave === "green" || wave === "绿" ? "history-ball-green" : "history-ball-red";
-    const num = parseInt(code, 10);
-    // 根据号码和开奖年份计算五行
-    const five = (num >= 1 && num <= 49) ? getNumberWuxing(num, year) : "";
-    html += `<div class="history-ball-card ${cc}"><div class="history-ball-number">${escapeHtml(code)}</div><div class="history-ball-tag">${escapeHtml(zodiac || "")}/${escapeHtml(five)}</div></div>`;
-    if (i === 5) html += '<span class="history-plus-sign">+</span>';
-  });
-  return html;
-}
+
+  function renderBallsHTML(codes, waves, zodiacs, year) {
+    year = year || CURRENT_YEAR;   // 防止 ReferenceError
+    let html = "";
+    codes.forEach((code, i) => {
+      const wave = waves[i];
+      const zodiac = zodiacs[i];
+      const cc = wave === "blue" || wave === "蓝" ? "history-ball-blue" :
+                 wave === "green" || wave === "绿" ? "history-ball-green" : "history-ball-red";
+      const num = parseInt(code, 10);
+      const five = (num >= 1 && num <= 49) ? getFive(num, year) : "";  // 使用 getFive 计算五行
+      html += `<div class="history-ball-card ${cc}"><div class="history-ball-number">${escapeHtml(code)}</div><div class="history-ball-tag">${escapeHtml(zodiac || "")}/${escapeHtml(five)}</div></div>`;
+      if (i === 5) html += '<span class="history-plus-sign">+</span>';
+    });
+    return html;
+  }
+
   function ensureHistorySorted() {
     if (currentHistorySorted.length > 0) return;
     const seen = new Set();
     const unique = [];
-    currentHistoryData.forEach(item => {
+    for (const item of currentHistoryData) {
       if (item && item.expect && !seen.has(item.expect)) { seen.add(item.expect); unique.push(item); }
-    });
+    }
     currentHistorySorted = unique.sort((a, b) => String(b.expect).localeCompare(String(a.expect), undefined, { numeric: true }));
   }
+
   function renderHistoryPage() {
     try {
       const cont = document.getElementById("historyContent");
@@ -694,20 +660,21 @@ function renderLottery(item) {
       const start = (currentHistoryPage - 1) * HISTORY_PAGE_SIZE;
       const pageData = sorted.slice(start, start + HISTORY_PAGE_SIZE);
       const frag = document.createDocumentFragment();
-      for (let i = 0; i < pageData.length; i++) {
-        const item = pageData[i];
+      for (const item of pageData) {
         const expect = escapeHtml(item.expect || "");
         let ballsHtml = "";
         if (item.openCode && item.openCode.trim()) {
-          const codes = item.openCode.split(",").map(function (c) { return escapeHtml(c.trim()); });
-          const waves = (item.wave || "").split(",").map(function (w) { return escapeHtml(w.trim()); });
-          const zodiacs = (item.zodiac || "").split(",").map(function (z) { return escapeHtml(z.trim()); });
-          const recordYear = historyYearLoaded || CURRENT_YEAR;
+          const codes = item.openCode.split(",").map(c => escapeHtml(c.trim()));
+          const waves = (item.wave || "").split(",").map(w => escapeHtml(w.trim()));
+          const zodiacs = (item.zodiac || "").split(",").map(z => escapeHtml(z.trim()));
+          const recordYear = historyYearLoaded || CURRENT_YEAR;  // 确保年份存在
           ballsHtml = renderBallsHTML(codes, waves, zodiacs, recordYear);
-        } else { ballsHtml = '<div style="display:flex; justify-content:center; align-items:center; padding:24px 0; color:#fbbf24; font-size:14px; font-weight:500;">待开奖</div>'; }
+        } else {
+          ballsHtml = '<div style="display:flex; justify-content:center; align-items:center; padding:24px 0; color:#fbbf24; font-size:14px; font-weight:500;">待开奖</div>';
+        }
         const div = document.createElement("div");
         div.className = "history-item";
-        div.innerHTML = '<div class="history-item-header">第' + expect.slice(4) + "期 · " + escapeHtml(item.openTime && item.openTime.slice(5, 16) || "") + '</div><div class="history-balls-row">' + ballsHtml + "</div>";
+        div.innerHTML = `<div class="history-item-header">第${expect.slice(4)}期 · ${escapeHtml(item.openTime && item.openTime.slice(5, 16) || "")}</div><div class="history-balls-row">${ballsHtml}</div>`;
         frag.appendChild(div);
       }
       if (cont) { cont.innerHTML = ""; cont.appendChild(frag); }
@@ -722,7 +689,11 @@ function renderLottery(item) {
         if (prevBtn) prevBtn.disabled = currentHistoryPage <= 1;
         if (nextBtn) nextBtn.disabled = currentHistoryPage >= totalPages;
       }
-    } catch (err) { console.error("renderHistoryPage error:", err); }
+    } catch (e) {
+      console.error("renderHistoryPage error:", e);
+      const cont = document.getElementById("historyContent");
+      if (cont) cont.innerHTML = '<div style="color:#f87171;">历史加载失败: ' + escapeHtml(e.message) + '</div>';
+    }
   }
 
   // ---------- 抽屉系统 (移除 live 模板) ----------
