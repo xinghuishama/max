@@ -1,21 +1,7 @@
-// 项目级 build.gradle
-buildscript {
-    repositories {
-        google()
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:8.2.2'
-    }
+// Top-level build file
+plugins {
+    id 'com.android.application' version '7.4.2' apply false
 }
-
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
-
 task clean(type: Delete) {
     delete rootProject.buildDir
 }

@@ -25,5 +25,5 @@ android {
 }
 
 dependencies {
-    // 纯 WebView 应用不需要任何第三方库
+    // 无依赖
 }
