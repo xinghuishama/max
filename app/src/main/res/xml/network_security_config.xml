@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- 允许访问开奖 API（HTTP + HTTPS） -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">macaumarksix.com</domain>
+    </domain-config>
+    <!-- 允许加载本地 asset -->
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>
