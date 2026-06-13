@@ -1,12 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 全局主题：无标题栏，深色背景 -->
-    <style name="Theme.ShenmaApp" parent="Theme.AppCompat.NoActionBar">
-        <item name="android:windowBackground">#080818</item>
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
-        <item name="android:enforceNavigationBarContrast">false</item>
-        <item name="android:enforceStatusBarContrast">false</item>
+    <style name="AppTheme" parent="android:Theme.Black.NoTitleBar">
+        <!-- 纯 WebView 应用不需要额外样式 -->
     </style>
 </resources>
