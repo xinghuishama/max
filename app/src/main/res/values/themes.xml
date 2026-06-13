@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <style name="AppTheme" parent="android:Theme.Black.NoTitleBar">
-        <!-- 纯 WebView 应用不需要额外样式 -->
-    </style>
-</resources>
