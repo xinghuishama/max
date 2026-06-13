@@ -25,5 +25,4 @@ android {
 }
 
 dependencies {
-    // 无依赖
 }
