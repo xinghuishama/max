@@ -14,8 +14,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<!-- 外部样式，添加 SRI -->
-<link rel="stylesheet" href="style.css" integrity="sha384-+VKjOGQw6uHn/jhMsCpJYcT+O4qJqZmS+T1bJqXj5nXwUKZyw3gFJbVkFhS9cH2F" crossorigin="anonymous">
+<!-- 请将 integrity 值替换为你实际生成的 SHA-384 -->
+<link rel="stylesheet" href="style.css" integrity="sha384-LPypQQPJgQ1I4A6DTEpqxP6rJabGJm1WH9qbKuG2hzAEMDjhQWjYUpd+w9agkTKG" crossorigin="anonymous">
 </head>
 <body class="mech-grid text-gray-300 overflow-x-hidden">
 
@@ -33,7 +33,6 @@
 <!-- 主应用 -->
 <div id="main-app">
   <main class="relative z-10 max-w-4xl mx-auto p-3">
-    <!-- header 移除了内联 style -->
     <header class="relative rounded-t-xl bg-gradient-to-r from-[#00ffea]/20 via-[#9d00ff]/20 to-[#ff0055]/20 border-b border-[#00ffea]/30 p-6 text-center">
       <div id="settingsWrapper">
         <button type="button" id="settingsBtn" aria-label="设置" title="设置">
@@ -53,12 +52,10 @@
           </div>
         </div>
       </div>
-      <!-- h1 使用 text-[26px] 替代内联样式 -->
       <h1 class="relative z-10 text-3xl font-black bg-gradient-to-r from-[#00ffea] via-[#ff0055] to-[#9d00ff] bg-clip-text text-transparent tracking-wider whitespace-nowrap text-[26px]">神码再现</h1>
       <p class="relative z-10 text-sm text-gray-400 mt-2 tracking-widest">命中衰减 · 频次动态调整</p>
     </header>
 
-    <!-- section 移除了内联 style，改用 border-x border-b 等类 -->
     <section class="border-x border-b border-[#00ffea]/20 p-4 rounded-b-xl">
       <textarea id="numbers" rows="3" maxlength="15000" class="w-full bg-transparent border border-[#00ffea]/30 rounded-lg p-3 text-[#00ffea] font-mono text-sm resize-y min-h-[100px] focus:outline-none focus:border-[#00ffea] transition-all" placeholder="输入号码或生肖，例如: 12 25 36 龙蛇马 8 17 29 41"></textarea>
       <div class="flex justify-between items-center mt-2 text-xs text-gray-500 font-mono">
@@ -110,7 +107,7 @@
   <div id="toast" class="fixed bottom-24 left-1/2 -translate-x-1/2 bg-[#0a0a12] border border-[#00ffea]/30 text-[#00ffea] px-6 py-3 rounded-lg shadow-[0_0_20px_rgba(0,255,234,0.3)] transform translate-y-20 opacity-0 transition-all duration-300 z-[200] pointer-events-none" role="alert" aria-live="polite"></div>
 </div>
 
-<!-- 外部脚本，添加 SRI -->
-<script src="app.js" integrity="sha384-7kGV4nLOc6c9Khef2A86Ww8l6pVd0pY4FMgpG5hI98TOEwOIXb6+Qv/sHZY+gGj0" crossorigin="anonymous"></script>
+<!-- 外部脚本，添加 SRI（请替换 app.js 的哈希值） -->
+<script src="app.js" integrity="sha384-hdARDECdidjeY5t9MbFBD9nbiaN2Zak4F9pX+D1OwKm8wrG8tpPXI9OlrBnv0TD7" crossorigin="anonymous"></script>
 </body>
 </html>
