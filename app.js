@@ -1397,27 +1397,27 @@ const APP_CONFIG = Object.freeze({
           `<label><input type="checkbox" class="filter-checkbox hidden" value="${escapeHtml(h)}" data-drawer="heshu" ${sel.includes(h)?"checked":""}><span class="filter-label dbtn dbtn-sm">${escapeHtml(h)}</span></label>`
         ).join("") + "</div>";
       },
-      history: () => {
-        let opts = "";
-        for (let y = getBeijingDate().getFullYear(); y >= 2020; y--) {
-          opts += `<option value="${y}">${y}年</option>`;
-        }
-        return [
-          '<div>',
-            `<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">`,
-              `<select id="historyYear" class="dselect" style="flex:1;"><option value="">选择年份</option>${opts}</select>`,
-              `<button type="button" id="historyRefreshBtn" class="dbtn dbtn-sm" style="width:auto; padding:10px 16px; white-space:nowrap;">刷新</button>`,
-            `</div>`,
-            '<div id="historyLoading" class="dhidden dtext-center dpy-4"><svg class="animate-spin" style="width:24px;height:24px;margin:0 auto;color:#00ffea;" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div>',
-            '<div id="historyContent" class="dmt-3 hide-scrollbar"></div>',
-            '<div id="historyPagination" class="dflex-between dmt-6 dpx-1 dhidden">',
-              '<button type="button" id="history-prev" class="dpage-btn">← 上1页</button>',
-              '<div class="dtext-sm" style="text-align:center;">第 <span id="historyPageNum" style="font-weight:bold;color:#00ffea;">1</span> 页 / <span id="historyTotalPages" class="dtext-gray">1</span> 页</div>',
-              '<button type="button" id="history-next" class="dpage-btn">下1页 →</button>',
-            '</div>',
-          '</div>'
-        ].join("");
-      }
+history: () => {
+  let opts = "";
+  for (let y = getBeijingDate().getFullYear(); y >= 2020; y--) {
+    opts += `<option value="${y}">${y}年</option>`;
+  }
+  return [
+    '<div>',
+      '<div class="history-header-row">',
+        `<select id="historyYear" class="dselect">${opts}</select>`,
+        `<button type="button" id="historyRefreshBtn" class="dbtn dbtn-sm history-refresh-btn">刷新</button>`,
+      '</div>',
+      '<div id="historyLoading" class="dhidden dtext-center dpy-4"><svg class="animate-spin" style="width:24px;height:24px;margin:0 auto;color:#00ffea;" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div>',
+      '<div id="historyContent" class="dmt-3 hide-scrollbar"></div>',
+      '<div id="historyPagination" class="dflex-between dmt-6 dpx-1 dhidden">',
+        '<button type="button" id="history-prev" class="dpage-btn">← 上1页</button>',
+        '<div class="dtext-sm" style="text-align:center;">第 <span id="historyPageNum" style="font-weight:bold;color:#00ffea;">1</span> 页 / <span id="historyTotalPages" class="dtext-gray">1</span> 页</div>',
+        '<button type="button" id="history-next" class="dpage-btn">下1页 →</button>',
+      '</div>',
+    '</div>'
+  ].join("");
+}
     },
     open(type) {
       if (this.current === type) { this.close(); return; }
