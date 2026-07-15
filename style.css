@@ -919,3 +919,13 @@ header.relative {
   width: auto !important;
   padding: 10px 16px !important;
 }
+/* 强制缩小历史记录加载圆环 */
+#historyLoading svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+/* 如果觉得圆环线条太粗，顺便改细一点 */
+#historyLoading svg circle {
+  stroke-width: 2px !important;
+}
