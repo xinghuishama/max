@@ -929,8 +929,3 @@ header.relative {
 #historyLoading svg circle {
   stroke-width: 2px !important;
 }
-/* 强制输入框卡片左右边框出现 */
-section.border-x {
-  border-left: 2px solid rgba(0, 255, 234, 0.8) !important;
-  border-right: 2px solid rgba(0, 255, 234, 0.8) !important;
-}
