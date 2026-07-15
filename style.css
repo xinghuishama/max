@@ -929,3 +929,9 @@ header.relative {
 #historyLoading svg circle {
   stroke-width: 2px !important;
 }
+#main-app {
+  overflow: visible !important;
+}
+main {
+  overflow: visible !important;
+}
