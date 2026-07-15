@@ -167,7 +167,7 @@ header.rounded-t-xl {
   --neon-pink: #ff0055;
   --bg-color: transparent;
 }
-* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; border-style: solid; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; border-width: 0; border-style: solid; border-color: #e5e7eb; }
 body {
   font-family: 'Orbitron', system-ui, -apple-system, sans-serif;
   background: #080818;
@@ -928,10 +928,4 @@ header.relative {
 /* 如果觉得圆环线条太粗，顺便改细一点 */
 #historyLoading svg circle {
   stroke-width: 2px !important;
-}
-#main-app {
-  overflow: visible !important;
-}
-main {
-  overflow: visible !important;
 }
