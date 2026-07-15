@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <!-- 请将 integrity 值替换为你实际生成的 SHA-384 -->
-<link rel="stylesheet" href="style.css" integrity="sha384-rXfK7gfX6GCdOK2+5GhRRil1YWtmaVafdee0gGasiJQIlOEsk27hRszYS4FIPS8y" crossorigin="anonymous">
+<link rel="stylesheet" href="style.css" integrity="sha384-pgGagS9CBE0B9DKSl6MPmd2SHdbHFOtr+VAMoNdYkCaMzeinLKIgWKyjNvyvr4C0" crossorigin="anonymous">
 </head>
 <body class="mech-grid text-gray-300 overflow-x-hidden">
 
@@ -29,15 +29,7 @@
     <div class="loading-text" id="loading-text">SYSTEM INITIALIZING... 0%</div>
   </div>
 </div>
-<style>
-* {
-  border-color: #00ffea !important;
-  border-width: 2px !important;
-  border-style: solid !important;
-  box-shadow: 0 0 0 2px #00ffea inset !important;
-  outline: 2px solid #00ffea !important;
-}
-</style>
+
 <!-- 主应用 -->
 <div id="main-app">
   <main class="relative z-10 max-w-4xl mx-auto p-3">
@@ -64,14 +56,12 @@
       <p class="relative z-10 text-sm text-gray-400 mt-2 tracking-widest">命中衰减 · 频次动态调整</p>
     </header>
 
-<section style="background: red !important; 
-                box-shadow: inset 0 0 0 4px #00ffea !important; 
-                border-radius: 12px; 
-                padding: 20px; 
-                margin: 10px 0;
-                min-height: 100px;">
-  测试区域
-
+<section class="p-4 rounded-b-xl" 
+         style="border-left: 1px solid rgba(0,255,234,0.6); 
+                border-right: 1px solid rgba(0,255,234,0.6); 
+                border-bottom: 1px solid rgba(0,255,234,0.6); 
+                border-bottom-left-radius: 12px; 
+                border-bottom-right-radius: 12px;">
       <textarea id="numbers" rows="3" maxlength="15000" class="w-full bg-transparent border border-[#00ffea]/30 rounded-lg p-3 text-[#00ffea] font-mono text-sm resize-y min-h-[100px] focus:outline-none focus:border-[#00ffea] transition-all" placeholder="输入号码或生肖，例如: 12 25 36 龙蛇马 8 17 29 41"></textarea>
       <div class="flex justify-between items-center mt-2 text-xs text-gray-500 font-mono">
         <span>智能分析引擎 <span class="text-emerald-400 text-[10px]">(防抖200ms · 上限5000个号码)</span></span>

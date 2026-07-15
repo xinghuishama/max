@@ -167,7 +167,7 @@ header.rounded-t-xl {
   --neon-pink: #ff0055;
   --bg-color: transparent;
 }
-* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; border-width: 0; border-style: solid; border-color: #e5e7eb; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 body {
   font-family: 'Orbitron', system-ui, -apple-system, sans-serif;
   background: #080818;
