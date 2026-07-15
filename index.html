@@ -56,14 +56,13 @@
       <p class="relative z-10 text-sm text-gray-400 mt-2 tracking-widest">命中衰减 · 频次动态调整</p>
     </header>
 
-   <section class="p-4 rounded-b-xl" 
-         style="border-bottom: 1px solid rgba(0,255,234,0.6); 
-                box-shadow: 
-                  inset 0 0 0 1px rgba(0,255,234,0.6),   /* 这会在内部加一条细线，左右上下都会有，但底部已有 border，顶部不需要，所以只模拟左右 */
-                  -1px 0 0 0 rgba(0,255,234,0.6),         /* 模拟左边框 */
-                  1px 0 0 0 rgba(0,255,234,0.6);          /* 模拟右边框 */
-                border-bottom-left-radius: 12px; 
-                border-bottom-right-radius: 12px;">
+ <section class="border-x border-b border-[#00ffea]/30 p-4 rounded-b-xl" 
+         style="border-left-width:1px; border-right-width:1px; border-bottom-width:1px; 
+                border-color:rgba(0,255,234,0.3); 
+                border-bottom-left-radius:12px; 
+                border-bottom-right-radius:12px;
+                outline: 1px solid rgba(0,255,234,0.3);
+                outline-offset: -1px;">
       <textarea id="numbers" rows="3" maxlength="15000" class="w-full bg-transparent border border-[#00ffea]/30 rounded-lg p-3 text-[#00ffea] font-mono text-sm resize-y min-h-[100px] focus:outline-none focus:border-[#00ffea] transition-all" placeholder="输入号码或生肖，例如: 12 25 36 龙蛇马 8 17 29 41"></textarea>
       <div class="flex justify-between items-center mt-2 text-xs text-gray-500 font-mono">
         <span>智能分析引擎 <span class="text-emerald-400 text-[10px]">(防抖200ms · 上限5000个号码)</span></span>
