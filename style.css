@@ -140,7 +140,12 @@
 .pb-20 { padding-bottom: 5rem; }
 .pb-4 { padding-bottom: 1rem; }
 .border { border-width: 1px; }
+.border-x { border-left-width: 1px; border-right-width: 1px; }
+.border-y { border-top-width: 1px; border-bottom-width: 1px; }
+.border-t { border-top-width: 1px; }
 .border-b { border-bottom-width: 1px; }
+.border-l { border-left-width: 1px; }
+.border-r { border-right-width: 1px; }
 
 /* ===== 修复渐变文字 ===== */
 .bg-clip-text {
@@ -918,14 +923,4 @@ header.relative {
   white-space: nowrap !important;
   width: auto !important;
   padding: 10px 16px !important;
-}
-/* 强制缩小历史记录加载圆环 */
-#historyLoading svg {
-  width: 14px !important;
-  height: 14px !important;
-}
-
-/* 如果觉得圆环线条太粗，顺便改细一点 */
-#historyLoading svg circle {
-  stroke-width: 2px !important;
 }
