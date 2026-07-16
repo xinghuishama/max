@@ -906,21 +906,3 @@ header.relative {
   line-height: 1.2 !important;
 }
 
-/* ===== 历史抽屉布局修复 ===== */
-.history-header-row {
-  display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  flex-wrap: nowrap !important;
-  margin-bottom: 8px !important;
-}
-.history-header-row select {
-  flex: 1 !important;
-  min-width: 0 !important;
-}
-.history-header-row .history-refresh-btn {
-  flex-shrink: 0 !important;
-  white-space: nowrap !important;
-  width: auto !important;
-  padding: 10px 16px !important;
-}
